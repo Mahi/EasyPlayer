@@ -9,6 +9,8 @@ import collections
 # Source.Python
 from entities.constants import MoveType
 from entities.constants import TakeDamage
+from entities.helpers import index_from_pointer
+from entities.hooks import EntityPreHook
 
 from events import Event
 
@@ -18,6 +20,21 @@ from listeners.tick import Delay
 
 from players.entity import PlayerEntity
 from players.helpers import index_from_userid
+
+from weapons.entity import WeaponEntity
+
+
+# ======================================================================
+# >> HOOKS
+# ======================================================================
+
+@EntityPreHook('player', 'bump_weapon')
+def _bump_weapon(args):
+    """Hooked to bump_weapon function to implement restrictions."""
+    player = EasyPlayer(index_from_pointer(args[0]))
+    weapon = WeaponEntity(index_from_pointer(args[1]))
+    if weapon.classname in player.restrictions:
+        return False
 
 
 # ======================================================================
@@ -60,9 +77,9 @@ def level_shutdown():
 # ======================================================================
 
 class PlayerEffect(object):
-    """Class to easily create player effects like burn() or freeze().
+    """Class to implement player effects like `burn()` or `freeze()`.
 
-    Preferrably used as a decorator similar to property(). Example:
+    Preferrably used as a decorator similar to `property()`. Example:
 
     >>> class EasyPlayer(PlayerEntity):
     ...     @PlayerEffect
@@ -73,23 +90,23 @@ class PlayerEffect(object):
     ...     def burn(self):
     ...         self.ignite_lifetime(0)
 
-    The first function (burn.on) gets called whenever player.burn()
-    is called with any value. If an optional argument "duration"
-    is passed to the player.burn() function, the burn.off() function
-    will automatically get called after the passed duration.
+    The first function (`burn.on`) gets called whenever `player.burn()`
+    is called with any value. If an optional argument `duration`
+    is passed to the `player.burn()` function, `burn.off()` function
+    will automatically get called after the duration has passed.
 
-    You can use player.burn(0) to disable an existing "infinite" effect.
-    Notice, that it only disables one of the infinite effects, so this
-    code would leave player burning:
+    You can use `player.burn(0)` to disable an existing "infinite"
+    effect. Notice, that it only disables one of the infinite effects,
+    so a code like this would leave the player burning:
 
     >>> p = EasyPlayer(1)
     >>> p.burn()  # Apply one "infinite" burn
     >>> p.burn()  # Apply an other one
     >>> p.burn(0)  # Disable one of them; player still burning.
 
-    p.burn(0) also doesn't interfere with p.burn(5), so if you call
-    p.burn(5) and then try to shut it with p.burn(0), the player will
-    keep burning.
+    `p.burn(0)` also doesn't interfere with `p.burn(5)`, so if you apply
+    a burn with a duration and then try to shut it with `p.burn(0)`,
+    the player will keep burning.
     """
 
     def __init__(self, on_f=None, off_f=None):
@@ -123,11 +140,11 @@ class PlayerEffect(object):
 
 
 class _EasyPlayerMeta(type(PlayerEntity)):
-    """Metaclass for all EasyPlayer classes.
+    """Metaclass for all `EasyPlayer` classes.
 
-    Manages all the instances of a PlayerEntity class, making sure
+    Manages all the instances of a `PlayerEntity` class, making sure
     they get cached properly. Together with the game event functions
-    defined above in this easyplayer.py file, it will also clean up
+    defined above in this `easyplayer.py` file, it will also clean up
     any players leaving the server or changing the map.
     """
     _classes = {}
@@ -145,9 +162,9 @@ class _EasyPlayerMeta(type(PlayerEntity)):
 
 
 class EasyPlayer(PlayerEntity, metaclass=_EasyPlayerMeta):
-    """Custom PlayerEntity class with bonus features.
+    """Custom `PlayerEntity` class with bonus features.
 
-    The core idea is that EasyPlayer manages "PlayerEffects" like
+    The core idea is that `EasyPlayer` manages "player effects" like
     burn, freeze, and noclip, so that you can use them without having
     to worry about someone else using them. Normally removing freeze
     using `player.move_type = MoveType.WALK` might also remove a freeze
@@ -155,15 +172,15 @@ class EasyPlayer(PlayerEntity, metaclass=_EasyPlayerMeta):
     If everyone used EasyPlayer, this wouldn't happen.
 
     You can also use all of these effects with a duration instead
-    of manually using tick_delays For example: `player.freeze(10)`
+    of manually using `tick_delays` For example: `player.freeze(10)`
     to freeze a player for 10 seconds. To permanently freeze a player,
     pass no argument at all: `player.freeze()`. To remove this infinite
     freeze, pass in a zero: `player.freeze(0)`. Notice that it doesn't
     completely unfreeze the player; it simply removes the freeze applied
     by you.
 
-    EasyPlayer also resets gravity on every round and implements
-    from_userid(userid) classmethod to get an instance directly
+    `EasyPlayer` also resets gravity on every round and implements
+    `from_userid(userid)` classmethod to get an instance directly
     from an userid. You can also use `restrictions` set to restrict
     player from using certain weapons. The set should contain classnames
     of the weapons that are meant to be restricted.
