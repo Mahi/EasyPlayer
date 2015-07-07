@@ -41,4 +41,4 @@ The set should contain classnames of the weapons that are meant to be restricted
 
 ### Final words
 Keep in mind that `EasyPlayer` is still in beta, and might contain some bugs.
-If you have any suggestions for improvements, or possibly new player effects you'd like to see, leave an issue to this repository and I'll answer asap.
+If you have any suggestions for improvements, or possibly new player effects you'd like to see, leave an issue (or a pull request if you prefer helping with the coding) to this repository and I'll answer asap.
