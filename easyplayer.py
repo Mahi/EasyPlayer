@@ -105,30 +105,33 @@ class PlayerEffect(object):
     `player.burn(0)` to stop the burn you've applied.
     """
 
-    def __init__(self, on_f=None, off_f=None):
+    def __init__(self, name, on_f=None, off_f=None):
+        self._name = name
         self._on_f = on_f
         self._off_f = off_f
 
     def on(self, on_f):
-        return type(self)(on_f, self._off_f)
+        return type(self)(self._name, on_f, self._off_f)
+
+    __call__ = on
 
     def off(self, off_f):
-        return type(self)(self._on_f, off_f)
+        return type(self)(self._name, self._on_f, off_f)
 
     def _enable(self, player, duration=-1):
         if duration < 0:  # Infinite (1 hour)
-            player._effects[self].append(True)
+            player._effects[self._name].append(True)
         elif duration == 0:  # "Cancel" infinite
             return self._disable(player, True)
         else:
             delay = tick_delays.delay(duration, self._disable)
             delay.args = (player, delay)
-            player._effects[self].append(delay)
+            player._effects[self._name].append(delay)
         self._on_f(player)
 
     def _disable(self, player, delay):
-        player._effects[self].remove(delay)
-        if not player._effects[self]:
+        player._effects[self._name].remove(delay)
+        if not player._effects[self._name]:
             self._off_f(player)
 
     def __get__(self, instance, owner):
@@ -159,7 +162,7 @@ class _EasyPlayerMeta(type(PlayerEntity)):
 
 class EasyPlayer(PlayerEntity, metaclass=_EasyPlayerMeta):
     """Custom `PlayerEntity` class with bonus player effects.
-    
+
     Also implements restriction system and `from_userid` classmethod."""
 
     def __init__(self, index):
@@ -170,7 +173,21 @@ class EasyPlayer(PlayerEntity, metaclass=_EasyPlayerMeta):
     def from_userid(cls, userid):
         return cls(index_from_userid(userid))
 
-    @PlayerEffect
+    def _update_move_type(self):
+        if self._effects['noclip']:
+            self.move_type = MoveType.NOCLIP
+        elif self._effects['freeze']:
+            self.move_type = MoveType.NONE
+        elif self._effects['fly']:
+            self.move_type = MoveType.FLY
+        else:
+            self.move_type = MoveType.WALK
+
+    noclip = PlayerEffect('noclip', _update_move_type, _update_move_type)
+    freeze = PlayerEffect('freeze', _update_move_type, _update_move_type)
+    fly = PlayerEffect('fly', _update_move_type, _update_move_type)
+
+    @PlayerEffect('burn')
     def burn(self):
         self.ignite_lifetime(3600)  # 1 hour enough?
 
@@ -178,46 +195,7 @@ class EasyPlayer(PlayerEntity, metaclass=_EasyPlayerMeta):
     def burn(self):
         self.ignite_lifetime(0)
 
-    @PlayerEffect
-    def freeze(self):
-        self.move_type = MoveType.NONE
-
-    @freeze.off
-    def freeze(self):
-        if self._effects['noclip']:
-            self._noclip()
-        elif self._effects['fly']:
-            self._fly()
-        else:
-            self.move_type = MoveType.WALK
-
-    @PlayerEffect
-    def noclip(self):
-        self.move_type = MoveType.NOCLIP
-
-    @noclip.off
-    def noclip(self):
-        if self._effects['freeze']:
-            self._freeze()
-        elif self._effects['fly']:
-            self._fly()
-        else:
-            self.move_type = MoveType.WALK
-
-    @PlayerEffect
-    def fly(self):
-        self.move_type = MoveType.FLY
-
-    @fly.off
-    def fly(self):
-        if self._effects['freeze']:
-            self._freeze()
-        elif self._effects['noclip']:
-            self._noclip()
-        else:
-            self.move_type = MoveType.WALK
-
-    @PlayerEffect
+    @PlayerEffect('godmode')
     def godmode(self):
         self.set_property_uchar('m_takedamage', TakeDamage.NO)
 
