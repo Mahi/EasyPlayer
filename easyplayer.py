@@ -100,7 +100,7 @@ class PlayerEffect(object):
     effect. Notice, that `p.burn(0)` doesn't interfere with `p.burn(5)`,
     so if you apply a burn with a duration and then try to stop it with
     `p.burn(0)`, the player will keep burning. It also wont completely
-    extinguish the player, if someone else has applied an other permanent
+    extinguish the player: if someone else has applied a permanent
     burn to the player, he will keep burning even if you call
     `player.burn(0)` to stop the burn you've applied.
     """
