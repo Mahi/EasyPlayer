@@ -25,9 +25,19 @@ You can subclass `EasyPlayer` as you please, and it shouldn't interfere with any
 There's even a built-in restriction system in `EasyPlayer`! You can use it by accessing player's `restrictions` set to restrict him from using certain weapons.
 The set should contain classnames of the weapons that are meant to be restricted:
 
+    from easyplayer import EasyPlayer
     from filters.weapons import WeaponClassIter
-    # Allow only scout and knife
-    player.restrictions = set(WeaponClassIter(return_types='classname')) - {'weapon_knife', 'weapon_scout'}
+    from events import Event
+    
+    @Event
+    def player_spawn(game_event):
+        player = EasyPlayer.from_userid(game_event.get_int('userid'))
+    
+        # Allow only scout and knife
+        player.restrictions = set(WeaponClassIter(return_types='classname')) - {'weapon_knife', 'weapon_scout'}
+    
+        # Actually, allow awp too
+        player.restrictions.remove('weapon_awp')
 
 ### Final words
 Keep in mind that `EasyPlayer` is still in beta, and might contain some bugs.
