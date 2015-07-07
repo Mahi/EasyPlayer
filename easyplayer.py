@@ -79,12 +79,13 @@ def level_shutdown():
 class PlayerEffect(object):
     """Class to implement player effects like `burn()` or `freeze()`.
 
-    Preferrably used as a decorator similar to `property()`. Example:
+    Preferrably used as a decorator similar to `property()`.
+    Example usage:
 
     >>> class EasyPlayer(PlayerEntity):
     ...     @PlayerEffect
     ...     def burn(self):
-    ...         self.ignite_lifetime(3600)
+    ...         self.ignite_lifetime(3600)  # 1 hour is almost infinite
     ...
     ...     @burn.off
     ...     def burn(self):
@@ -96,17 +97,12 @@ class PlayerEffect(object):
     will automatically get called after the duration has passed.
 
     You can use `player.burn(0)` to disable an existing "infinite"
-    effect. Notice, that it only disables one of the infinite effects,
-    so a code like this would leave the player burning:
-
-    >>> p = EasyPlayer(1)
-    >>> p.burn()  # Apply one "infinite" burn
-    >>> p.burn()  # Apply an other one
-    >>> p.burn(0)  # Disable one of them; player still burning.
-
-    `p.burn(0)` also doesn't interfere with `p.burn(5)`, so if you apply
-    a burn with a duration and then try to shut it with `p.burn(0)`,
-    the player will keep burning.
+    effect. Notice, that `p.burn(0)` doesn't interfere with `p.burn(5)`,
+    so if you apply a burn with a duration and then try to stop it with
+    `p.burn(0)`, the player will keep burning. It also wont completely
+    extinguish the player, if someone else has applied an other permanent
+    burn to the player, he will keep burning even if you call
+    `player.burn(0)` to stop the burn you've applied.
     """
 
     def __init__(self, on_f=None, off_f=None):
