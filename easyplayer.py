@@ -50,6 +50,7 @@ def player_death(game_event):
     """
     player = EasyPlayer.from_userid(game_event.get_int('userid'))
     player.gravity = 1.0
+    player.restrictions.clear()
     player.cancel_all_effects()
 
 
@@ -62,7 +63,7 @@ def player_disconnect(game_event):
     index = index_from_userid(game_event.get_int('userid'))
     player = EasyPlayer.from_userid(game_event.get_int('userid'))
     player.cancel_all_effects()
-    _EasyPlayerMeta.discard_player(index)
+    tick_delays.delay(1.0, _EasyPlayerMeta.discard_player, index)
 
 
 @LevelShutdown
@@ -70,7 +71,7 @@ def level_shutdown():
     """
     Clean up all EasyPlayer instances from all EasyPlayer (sub)classes.
     """
-    _EasyPlayerMeta.discard_all_players()
+    tick_delays.delay(1.0, _EasyPlayerMeta.discard_all_players)
 
 
 # ======================================================================
