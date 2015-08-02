@@ -47,9 +47,9 @@ def _fire_game_event(self, game_event):
     _original_fire_game_event(self, game_event)
     name = game_event.get_name()
     if name == 'player_death':
-        player_death(game_event)
+        post_player_death(game_event)
     elif name == 'player_disconnect':
-        player_disconnect(game_event)
+        post_player_disconnect(game_event)
 
 
 # Replace the fire_game_event method with the new wrapped one
@@ -60,7 +60,7 @@ _EventListener.fire_game_event = _fire_game_event
 # >> GAME EVENTS
 # ======================================================================
 
-def player_death(game_event):
+def post_player_death(game_event):
     """
     Cancel any active player effects.
     Also resets player's gravity (Source engine pls).
@@ -71,7 +71,7 @@ def player_death(game_event):
     player._cancel_all_effects()
 
 
-def player_disconnect(game_event):
+def post_player_disconnect(game_event):
     """
     Clean up the EasyPlayer instance from all EasyPlayer (sub)classes.
     Also cancels all effects from the disconnecting player.
@@ -99,10 +99,12 @@ class _PlayerEffect(object):
     Class for player effects like freeze() and burn().
     """
 
-    def __init__(self, player):
+    def __init__(self, decorator_obj, player):
         """
         Initialize a new effect for a player.
+        `decorator_obj` should be of type `PlayerEffect`.
         """
+        self._decorator_obj = decorator_obj
         self._player = player
         self._delay = None
 
@@ -113,8 +115,8 @@ class _PlayerEffect(object):
         """
         if duration > 0:
             self._delay = tick_delays.delay(duration, self._disable)
-        self._player._effects[type(self)].append(self)
-        self._on_f(self._player)
+        self._player._effects[self._decorator_obj].append(self)
+        self._decorator_obj._on_f(self._player)
         return self
 
     __call__ = _enable
@@ -123,9 +125,9 @@ class _PlayerEffect(object):
         """
         Disable the effect.
         """
-        self._player._effects[type(self)].remove(self)
-        if not self._player._effects[type(self)]:
-            self._off_f(self._player)
+        self._player._effects[self._decorator_obj].remove(self)
+        if not self._player._effects[self._decorator_obj]:
+            self._decorator_obj._off_f(self._player)
 
     def cancel(self):
         """
@@ -137,54 +139,38 @@ class _PlayerEffect(object):
             self._delay = None
         self._disable()
 
-    def _on_f(player):
-        raise NotImplementedError
-
-    @staticmethod
-    def _off_f(player):
-        raise NotImplementedError
-
 
 class PlayerEffect(object):
     """
-    Decorator similar to property() for creating _PlayerEffect classes.
+    Decorator similar to property() for creating player effects.
     """
 
     def __init__(self, on_f=None, off_f=None):
         """
-        Initialize a player effect, creating the _PlayerEffect class.
+        Initialize a player effect.
         """
-        if on_f is not None:
-            name = on_f.__name__
-        elif off_f is not None:
-            name = off_f.__name__
-        else:
-            name = 'UnnamedPlayerEffect'
-        self.effect_cls = type(name, (_PlayerEffect,), {})
-        self.effect_cls._on_f = staticmethod(on_f)
-        self.effect_cls._off_f = staticmethod(off_f)
+        self._on_f = on_f
+        self._off_f = off_f
 
     def on(self, on_f):
         """
         Decorator to add an on_f function to the effect class.
         """
-        self.effect_cls._on_f = staticmethod(on_f)
-        return self
+        return type(self)(on_f, self._off_f)
 
     def off(self, off_f):
         """
         Decorator to add an off_f function to the effect class.
         """
-        self.effect_cls._off_f = staticmethod(off_f)
-        return self
+        return type(self)(self._on_f, off_f)
 
-    def __get__(self, instance, owner):
+    def __get__(self, obj, objtype=None):
         """
         Return an instance of the effect class.
         """
-        if instance is None:
+        if obj is None:
             return self
-        return self.effect_cls(instance)
+        return _PlayerEffect(self, obj)
 
 
 # ======================================================================
