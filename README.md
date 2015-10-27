@@ -1,9 +1,16 @@
 # EasyPlayer
 ### What is EasyPlayer?
-`EasyPlayer` is a custom package for Source.Python, designed to make it easier for plugin developers to interfere with the players.
-The core idea is that `EasyPlayer` manages "player effects", like burn, freeze, and noclip, so that you can use them without having to worry about someone else using them.
-Normally removing player's freeze using `player.move_type = MoveType.WALK` might also remove a freeze applied by an other plugin, or even drop the player's noclip.
-If everyone were to use `EasyPlayer`, this wouldn't happen as it manages the way these player effect calls are made, and doesn't unfreeze the player until every freeze applied on him ends.
+`EasyPlayer` is a custom package for Source.Python, designed to make it easier for plugin developers to interfere with the player entities.
+The main feature is `EasyPlayer`'s management of what I call "player effects", like burn and freeze, so that you can safely use them without having to worry about someone else changing them in their own plugins.
+
+Imagine the following scenario *without* `EasyPlayer`: You apply a freeze to a player using `player.move_type = MoveType.NONE`. Meanwhile, someone else (an other developer) has their own plugin freezes everyone for 2 seconds whenever they're shot. We now have two plugins interacting with `player.move_type`, and it might cause the following:
+
+ 1. Player X gets shot and thus frozen by the other developer's plugin
+ 2. A second later, your plugin applies your freeze due to whatever reason
+ 3. An other second later (2 seconds since player X was shot) the other developer's plugin removes his freeze using `player.move_type = MoveType.WALK`
+ 4. Your freeze was also removed because of this
+
+If everyone were to use `EasyPlayer`, this wouldn't happen as it manages the way these player effects are applied and removed. `EasyPlayer` makes sure a player doesn't unfreeze until every freeze applied on him has ended.
 
 ### How to use EasyPlayer?
 Currently you can call any of the following player effect functions on the player:
@@ -45,4 +52,4 @@ There's even a built-in restriction system in `EasyPlayer`! You can use it by ac
 
 ### Final words
 Keep in mind that `EasyPlayer` is still in beta, and might contain some bugs.
-If you have any suggestions for improvements, or possibly new player effects you'd like to see, leave an issue (or a pull request if you prefer helping with the coding) to this repository and I'll answer asap.
+If you have any suggestions for improvements, or possibly new player effects you'd like to see, leave an issue (or a pull request) to this repository and I'll answer asap.
