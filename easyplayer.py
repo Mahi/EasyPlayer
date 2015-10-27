@@ -270,11 +270,11 @@ class EasyPlayer(PlayerEntity, metaclass=_EasyPlayerMeta):
         Updates the player's move_type attribute to match his latest
         move type player effects.
         """
-        if self._effects[type(self).noclip.effect_cls]:
+        if self._effects[type(self).noclip]:
             self.move_type = MoveType.NOCLIP
-        elif self._effects[type(self).freeze.effect_cls]:
+        elif self._effects[type(self).freeze]:
             self.move_type = MoveType.NONE
-        elif self._effects[type(self).fly.effect_cls]:
+        elif self._effects[type(self).fly]:
             self.move_type = MoveType.FLY
         else:
             self.move_type = MoveType.WALK
