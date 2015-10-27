@@ -28,7 +28,7 @@ from weapons.entity import WeaponEntity
 # ======================================================================
 
 @EntityPreHook('player', 'bump_weapon')
-def bump_weapon(args):
+def _pre_bump_weapon(args):
     """
     Hooked to bump_weapon function to implement weapon restrictions.
     """
@@ -45,14 +45,14 @@ _original_fire_game_event = _EventListener.fire_game_event
 @wraps(_original_fire_game_event)
 def _fire_game_event(self, game_event):
     _original_fire_game_event(self, game_event)
-    name = game_event.get_name()
-    if name == 'player_death':
-        post_player_death(game_event)
-    elif name == 'player_disconnect':
-        post_player_disconnect(game_event)
+    event_name = game_event.get_name()
+    if event_name == 'player_death':
+        _post_player_death(game_event)
+    elif event_name == 'player_disconnect':
+        _post_player_disconnect(game_event)
 
 
-# Replace the fire_game_event method with the new wrapped one
+# Monkey patch the fire_game_event method with the new wrapped one
 _EventListener.fire_game_event = _fire_game_event
 
 
@@ -60,7 +60,7 @@ _EventListener.fire_game_event = _fire_game_event
 # >> GAME EVENTS
 # ======================================================================
 
-def post_player_death(game_event):
+def _post_player_death(game_event):
     """
     Cancel any active player effects.
     Also resets player's gravity (Source engine pls).
@@ -68,17 +68,17 @@ def post_player_death(game_event):
     player = EasyPlayer.from_userid(game_event.get_int('userid'))
     player.gravity = 1.0
     player.restrictions.clear()
-    player._cancel_all_effects()
+    player.cancel_all_effects()
 
 
-def post_player_disconnect(game_event):
+def _post_player_disconnect(game_event):
     """
     Clean up the EasyPlayer instance from all EasyPlayer (sub)classes.
     Also cancels all effects from the disconnecting player.
     """
     index = index_from_userid(game_event.get_int('userid'))
     player = EasyPlayer.from_userid(game_event.get_int('userid'))
-    player._cancel_all_effects()
+    player.cancel_all_effects()
     _EasyPlayerMeta.discard_player(index)
 
 
@@ -99,25 +99,26 @@ class _PlayerEffect(object):
     Class for player effects like freeze() and burn().
     """
 
-    def __init__(self, decorator_obj, player):
+    def __init__(self, descriptor_obj, player):
         """
         Initialize a new effect for a player.
-        `decorator_obj` should be of type `PlayerEffect`.
+        `descriptor_obj` should be of type `PlayerEffect`.
         """
-        self._decorator_obj = decorator_obj
+        self._descriptor_obj = descriptor_obj
         self._player = player
         self._delay = None
 
-    def _enable(self, duration=-1):
+    def _enable(self, duration=None):
         """
         Enable the effect.
-        Use negative duration for infinite effect.
+        If `duration` is a positive integer, cancel the effect
+        automatically after the duration has ended.
         """
-        if duration > 0:
+        if isinstance(duration, int) and duration > 0:
             self._delay = tick_delays.delay(duration, self._disable)
-        self._player._effects[self._decorator_obj].append(self)
-        self._decorator_obj._on_f(self._player)
-        return self
+        self._player._effects[self._descriptor_obj].append(self)
+        self._descriptor_obj._on_f(self._player)
+        return self  # For __call__
 
     __call__ = _enable
 
@@ -125,9 +126,9 @@ class _PlayerEffect(object):
         """
         Disable the effect.
         """
-        self._player._effects[self._decorator_obj].remove(self)
-        if not self._player._effects[self._decorator_obj]:
-            self._decorator_obj._off_f(self._player)
+        self._player._effects[self._descriptor_obj].remove(self)
+        if not self._player._effects[self._descriptor_obj]:
+            self._descriptor_obj._off_f(self._player)
 
     def cancel(self):
         """
@@ -142,12 +143,12 @@ class _PlayerEffect(object):
 
 class PlayerEffect(object):
     """
-    Decorator similar to property() for creating player effects.
+    Decorator similar to `property()` for creating player effects.
     """
 
     def __init__(self, on_f=None, off_f=None):
         """
-        Initialize a player effect.
+        Initialize a player effect with the given functions.
         """
         self._on_f = on_f
         self._off_f = off_f
@@ -179,28 +180,28 @@ class PlayerEffect(object):
 
 class _EasyPlayerMeta(type(PlayerEntity)):
     """
-    Metaclass for all EasyPlayer classes.
-    Manages all the instances of EasyPlayer classes, making sure
-    they get cached properly. Together with the game event functions
-    defined above in this easyplayer.py file, it will also clean up
-    any players leaving the server or changing the map.
+    Metaclass for the EasyPlayer class (and subclasses).
+    Manages all the instances of EasyPlayer, making sure they get
+    cached properly.
+
+    Together with the game events defined in easyplayer.py, this will
+    also clean up players leaving the server or changing the map.
     """
-    _classes = {}
 
-    def __new__(meta, name, bases, attrs):
-        """
-        Create a new EasyPlayer class and add it to the _classes dict.
-        """
-        cls = super().__new__(meta, name, bases, attrs)
-        meta._classes[cls] = {}
-        return cls
+    _classes = {}  # In case anyone wants to subclass EasyPlayer
 
-    def __call__(self, index, *args, **kwargs):
+    def __init__(cls, *args, **kwargs):
         """
-        Upon creating a new instance of an EasyPlayer class,
-        return an existing instance with the same index, if one exists.
+        Create a new instance dict for the class into _classes dict.
         """
-        instances = _EasyPlayerMeta._classes[self]
+        _EasyPlayerMeta._classes[cls] = {}
+
+    def __call__(cls, index, *args, **kwargs):
+        """
+        Instantiates an EasyPlayer class, but if an instance with
+        the index already exists, return it instead.
+        """
+        instances = _EasyPlayerMeta._classes[cls]
         if index not in instances:
             instances[index] = super().__call__(index, *args, **kwargs)
         return instances[index]
@@ -208,20 +209,19 @@ class _EasyPlayerMeta(type(PlayerEntity)):
     @staticmethod
     def discard_player(player_index):
         """
-        Discards a player, removing him from all of the EasyPlayer
-        classes (EasyPlayer + subclasses).
+        Discards a player, removing him from all EasyPlayer classes.
         """
-        for easy_player_instances in _EasyPlayerMeta._classes.values():
-            if player_index in easy_player_instances:
-                del easy_player_instances[player_index]
+        for instances in _EasyPlayerMeta._classes.values():
+            if player_index in instances:
+                del instances[player_index]
 
     @staticmethod
     def discard_all_players():
         """
         Discards all players, completely clearing the instances.
         """
-        for easy_player_instances in _EasyPlayerMeta._classes.values():
-            easy_player_instances.clear()
+        for instances in _EasyPlayerMeta._classes.values():
+            instances.clear()
 
 
 class EasyPlayer(PlayerEntity, metaclass=_EasyPlayerMeta):
@@ -245,7 +245,7 @@ class EasyPlayer(PlayerEntity, metaclass=_EasyPlayerMeta):
         """
         return cls(index_from_userid(userid))
 
-    def _cancel_all_effects(self):
+    def cancel_all_effects(self):
         """
         Cancel all the effects of an EasyPlayer instance.
         """
@@ -254,16 +254,22 @@ class EasyPlayer(PlayerEntity, metaclass=_EasyPlayerMeta):
                 effect.cancel()
         self._effects.clear()
 
-    def shift_property(self, prop_name, shift, duration=-1):
+    def shift_property(self, prop_name, shift, duration=None):
         """
         Shifts an EasyPlayer instances property's value for a duration.
-        Use negative duration for permanent effect.
+        If duration is a positive integer, revert the shift
+        automatically after the duration has ended.
         """
-        setattr(self, prop_name, getattr(self, prop_name) + shift)
-        if duration > 0:
+        old_value = getattr(self, prop_name)
+        setattr(self, prop_name, old_value + shift)
+        if isinstance(duration, int) and duration > 0:
             tick_delays.delay(self.shift_property, prop_name, -shift)
 
     def _update_move_type(self):
+        """
+        Updates the player's move_type attribute to match his latest
+        move type player effects.
+        """
         if self._effects[type(self).noclip.effect_cls]:
             self.move_type = MoveType.NOCLIP
         elif self._effects[type(self).freeze.effect_cls]:
