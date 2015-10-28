@@ -11,6 +11,7 @@ from entities.constants import MoveType
 from entities.constants import TakeDamage
 from entities.helpers import index_from_pointer
 from entities.hooks import EntityPreHook
+from entities.hooks import EntityCondition
 
 from events.listener import _EventListener
 
@@ -27,7 +28,7 @@ from weapons.entity import WeaponEntity
 # >> HOOKS
 # ======================================================================
 
-@EntityPreHook('player', 'bump_weapon')
+@EntityPreHook(EntityCondition.is_player, 'bump_weapon')
 def _pre_bump_weapon(args):
     """
     Hooked to bump_weapon function to implement weapon restrictions.
@@ -194,6 +195,7 @@ class _EasyPlayerMeta(type(PlayerEntity)):
         """
         Create a new instance dict for the class into _classes dict.
         """
+        super().__init__()
         _EasyPlayerMeta._classes[cls] = {}
 
     def __call__(cls, index, *args, **kwargs):
@@ -235,6 +237,7 @@ class EasyPlayer(PlayerEntity, metaclass=_EasyPlayerMeta):
         Initializes an EasyPlayer instance, adding _effects dict
         and a set of restricted items.
         """
+        super().__init__(index)
         self._effects = defaultdict(list)
         self.restrictions = set()
 
