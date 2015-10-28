@@ -40,15 +40,18 @@ There's even a built-in restriction system in `EasyPlayer`! You can use it by ac
     from filters.weapons import WeaponClassIter
     from events import Event
  
-    @Event
-    def player_spawn(game_event):
-        player = EasyPlayer.from_userid(game_event.get_int('userid'))
- 
-        # Allow only scout and knife
-        player.restrictions = set(WeaponClassIter(return_types='classname')) - {'weapon_knife', 'weapon_scout'}
- 
-        # Actually, allow awp too
-        player.restrictions.remove('weapon_awp')
+    @Event('player_spawn')
+    def on_spawn(userid, **eargs):
+        player = EasyPlayer.from_userid(userid)
+
+        # Restrict everything
+        player.restrictions = set(WeaponClassIter(return_types='classname'))
+
+        # Except knife
+        player.restrictions.remove('weapon_knife')
+
+        # Actually, allow awp and deagle too
+        player.restrictions -= {'weapon_awp', 'weapon_deagle'}
 
 ### Final words
 Keep in mind that `EasyPlayer` is still in beta, and might contain some bugs.
