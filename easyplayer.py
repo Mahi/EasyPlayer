@@ -242,7 +242,6 @@ class PlayerEffect(object):
 # =============================================================================
 # >> EASY PLAYER
 # =============================================================================
-
 class _EasyPlayerMeta(type(PlayerEntity)):
     """Metaclass for :class:`EasyPlayer` and its subclasses.
 
@@ -255,15 +254,7 @@ class _EasyPlayerMeta(type(PlayerEntity)):
 
     # Dictionary to store all the instances of all classes,
     # in case anyone wants to subclass :class:`EasyPlayer`.
-    _classes = {}
-
-    def __init__(cls):
-        """Initialize a new class.
-
-        Creates an instance dictionary for the new class into
-        :attr:`_classes` dictionary.
-        """
-        _EasyPlayerMeta._classes[cls] = {}
+    _classes = defaultdict(dict)
 
     def __call__(cls, index, *args, **kwargs):
         """Instantiates the class.
