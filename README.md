@@ -1,6 +1,6 @@
 # EasyPlayer
 ### What is EasyPlayer?
-`EasyPlayer` is a custom package for Source.Python, designed to make it easier for plugin developers to interfere with the player entities.
+`EasyPlayer` is a custom package for [Source.Python][sp], designed to make it easier for plugin developers to interfere with the player entities.
 The main feature is `EasyPlayer`'s management of what I call "player effects", like burn and freeze, so that you can safely use them without having to worry about someone else changing them in their own plugins.
 
 Imagine the following scenario *without* `EasyPlayer`: You apply a freeze to a player using `player.move_type = MoveType.NONE`. Meanwhile, someone else (an other developer) has their own plugin freeze everyone for 2 seconds whenever they're shot. We now have two plugins interacting with `player.move_type`, and it might cause the following:
@@ -52,6 +52,11 @@ There's even a built-in restriction system in `EasyPlayer`! You can use it by ac
 
         # Actually, allow awp and deagle too
         player.restrictions -= {'weapon_awp', 'weapon_deagle'}
+
+### How to install and use?
+To install `EasyPlayer` on your server with [Source.Python][sp] installed, simply drag and drop the `easyplayer.py` module into your `../addons/source-python/packages/custom/` directory, and restart your game server.
+To use `EasyPlayer` in your plugins, simply import it using `from easyplayer import EasyPlayer`. You can now either subclass your own player class from it, or use it as-is in your code.
+You can also use `from easyplayer import PlayerEffect` to create custom player effects for your subclasses. You should study the `easyplayer` module's content to learn more about how `PlayerEffect`'s work.
 
 ### Final words
 Keep in mind that `EasyPlayer` is still in beta, and might contain some bugs.
