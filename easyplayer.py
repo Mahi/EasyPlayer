@@ -59,9 +59,9 @@ def _pre_bump_weapon(args):
 _original_fire_game_event = _EventListener.fire_game_event
 
 
+# Custom fire_game_event method for post listeners.
 @wraps(_original_fire_game_event)
 def _fire_game_event(self, game_event):
-    """Custom fire_game_event method for post listeners."""
 
     # Call the original fire_game_event normally
     _original_fire_game_event(self, game_event)
@@ -82,7 +82,11 @@ _EventListener.fire_game_event = _fire_game_event
 # >> GAME EVENTS
 # =============================================================================
 def _post_player_death(game_event):
-    """Cancel any active player effects and reset player's gravity."""
+    """Cancel any active player effects and reset player's gravity.
+
+    :param game_event: Event provided by Source engine
+    :type game_event: :class:`events.GameEvent`
+    """
     player = EasyPlayer.from_userid(game_event.get_int('userid'))
     player.gravity = 1.0
     player.restrictions.clear()
@@ -90,7 +94,11 @@ def _post_player_death(game_event):
 
 
 def _post_player_disconnect(game_event):
-    """Clean up the players from all EasyPlayer classes."""
+    """Clean up the players from all EasyPlayer classes.
+
+    :param game_event: Event provided by Source engine
+    :type game_event: :class:`events.GameEvent`
+    """
     index = index_from_userid(game_event.get_int('userid'))
     player = EasyPlayer.from_userid(game_event.get_int('userid'))
     player.cancel_all_effects()
@@ -107,13 +115,15 @@ def level_shutdown():
 # >> PLAYER EFFECTS
 # =============================================================================
 class _PlayerEffect(object):
-    """Class for player effects like freeze() and burn()."""
+    """Class for player effects like freeze and burn."""
 
     def __init__(self, descriptor_obj, player):
         """Initialize a new effect for a player.
 
-        :param descriptor_obj: The :class:`PlayerEffect` instance
+        :param descriptor_obj: The descriptor object for the effect
+        :type descriptor_obj: :class:`PlayerEffect`
         :param player: Player who to apply the effect on
+        :type player: :class:`EasyPlayer`
         """
         self._descriptor_obj = descriptor_obj
         self._player = player
@@ -123,6 +133,7 @@ class _PlayerEffect(object):
         """Enable the effect.
 
         :param duration: Duration after which to cancel the effect
+        :type duration: :class:`int`|:class:`NoneType`
         """
 
         # If the duration is a positive integer
@@ -137,10 +148,16 @@ class _PlayerEffect(object):
         # Call the descriptor object's on-function on the player
         self._descriptor_obj._on_f(self._player)
 
-        # Return the player effect to allow __call__ and .cancel()
-        return self
+    def __call__(self, duration=None):
+        """Override () to call :func:`_enable`.
 
-    __call__ = _enable
+        :param duration: Duration after which to cancel the effect
+        :type duration: :class:`int`|:class:`NoneType`
+        :returns: self
+        :rtype: :class:`_PlayerEffect`
+        """
+        self._enable(duration)
+        return self
 
     def _disable(self):
         """Disable the effect."""
@@ -175,15 +192,20 @@ class PlayerEffect(object):
         """Initialize a player effect with the given functions.
 
         :param on_f: Function to call when the effect starts
-        :param off_f: Function to cal when the effect ends
+        :type on_f: :class:`function`
+        :param off_f: Function to call when the effect ends
+        :type off_f: :class:`function`
         """
         self._on_f = on_f
         self._off_f = off_f
 
     def on(self, on_f):
-        """Decorator to add an on_f function to the effect.
+        """Decorator to add an :attr:`on_f` function to the effect.
 
         :param on_f: Function to call when the effect starts
+        :type on_f: :class:`function`
+        :returns: Copy of self with new :attr:`on_f`
+        :rtype: :class:`PlayerEffect`
         """
         return type(self)(on_f, self._off_f)
 
@@ -191,14 +213,21 @@ class PlayerEffect(object):
         """Decorator to add an off_f function to the effect.
 
         :param off_f: Function to call when the effect ends
+        :type off_f: :class:`function`
+        :returns: Copy of self with new :attr:`off_f`
+        :rtype: :class:`PlayerEffect`
         """
         return type(self)(self._on_f, off_f)
 
     def __get__(self, obj, objtype=None):
-        """Get an instance of :class:`_PlayerEffect`.
+        """Descriptor method to get the actual player effect.
 
-        :param obj: The object who's accessing the effect
+        :param obj: The player who's accessing the effect
+        :type obj: :class:`EasyPlayer`
         :param objtype: Type of the object
+        :type objtype: :class:`_EasyPlayerMeta`
+        :returns: The actual player effect
+        :rtype: :class:`_PlayerEffect`
         """
 
         # Return the :class:`PlayerEffect` instance
@@ -215,7 +244,7 @@ class PlayerEffect(object):
 # =============================================================================
 
 class _EasyPlayerMeta(type(PlayerEntity)):
-    """Metaclass for the :class:`EasyPlayer` and its subclasses.
+    """Metaclass for :class:`EasyPlayer` and its subclasses.
 
     Manages all the instances of :class:`EasyPlayer`,
     making sure they get cached properly.
@@ -228,7 +257,7 @@ class _EasyPlayerMeta(type(PlayerEntity)):
     # in case anyone wants to subclass :class:`EasyPlayer`.
     _classes = {}
 
-    def __init__(cls, *args, **kwargs):
+    def __init__(cls):
         """Initialize a new class.
 
         Creates an instance dictionary for the new class into
@@ -240,6 +269,11 @@ class _EasyPlayerMeta(type(PlayerEntity)):
         """Instantiates the class.
 
         If an instance with the index already exists, return it instead.
+
+        :param index: Index of the player
+        :type index: :class:`int`
+        :returns: Player instance from the index
+        :rtype: :class:`EasyPlayer`
         """
 
         # Get the instance dictionary for the class
@@ -255,17 +289,21 @@ class _EasyPlayerMeta(type(PlayerEntity)):
         return instances[index]
 
     @staticmethod
-    def discard_player(player_index):
-        """Discard a player, removing him from all classes."""
+    def discard_player(index):
+        """Discard a player, removing him from all classes.
+
+        :param index: Index of the player to discard
+        :type index: :class:`int`
+        """
 
         # Loop through all of the instance dictionaries
         for instances in _EasyPlayerMeta._classes.values():
 
             # If an instance of the player exist in the dictionary
-            if player_index in instances:
+            if index in instances:
 
                 # Remove him from the dict
-                del instances[player_index]
+                del instances[index]
 
     @staticmethod
     def discard_all_players():
@@ -279,7 +317,7 @@ class _EasyPlayerMeta(type(PlayerEntity)):
 class EasyPlayer(PlayerEntity, metaclass=_EasyPlayerMeta):
     """Custom :class:`PlayerEntity` class with bonus player effects.
 
-    Also implements restrictions and :meth:`from_userid` classmethod.
+    Also implements restrictions and :method:`from_userid` classmethod.
     """
 
     def __init__(self, index):
@@ -288,6 +326,7 @@ class EasyPlayer(PlayerEntity, metaclass=_EasyPlayerMeta):
         Adds :attr:`_effects` dictionary and :attr:`restrictions` set.
 
         :param index: Index of the player who to instantiate
+        :type index: :class:`int`
         """
         super().__init__(index)
         self._effects = defaultdict(list)
@@ -298,6 +337,7 @@ class EasyPlayer(PlayerEntity, metaclass=_EasyPlayerMeta):
         """Constructor to get an instance from an userid.
 
         :param userid: UserID of the player who to instantiate
+        :type userid: :class:`int`
         """
         return cls(index_from_userid(userid))
 
@@ -318,8 +358,11 @@ class EasyPlayer(PlayerEntity, metaclass=_EasyPlayerMeta):
         """Shifts player's property's value.
 
         :param prop_name: Name of the property to shift, e.g. 'health'
+        :type prop_name: :class:`str`
         :param shift: Amount of shift to make, can be negative
+        :type shift: :class:`int`
         :param duration: Revert the shift after the duration has ended
+        :type duration: :class:`int`|:class:`NoneType`
         """
 
         # Get the current value of the property
