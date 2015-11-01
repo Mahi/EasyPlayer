@@ -26,6 +26,7 @@ from listeners.tick import tick_delays
 #   Players
 from players.entity import PlayerEntity
 from players.helpers import index_from_userid
+from players.helpers import userid_from_index
 #   Weapons
 from weapons.entity import WeaponEntity
 
@@ -99,10 +100,10 @@ def _post_player_disconnect(game_event):
     :param game_event: Event provided by Source engine
     :type game_event: :class:`events.GameEvent`
     """
-    index = index_from_userid(game_event.get_int('userid'))
-    player = EasyPlayer.from_userid(game_event.get_int('userid'))
+    userid = game_event.get_int('userid')
+    player = EasyPlayer.from_userid(userid)
     player.cancel_all_effects()
-    _EasyPlayerMeta.discard_player(index)
+    _EasyPlayerMeta.discard_player(userid)
 
 
 @LevelShutdown
@@ -259,7 +260,8 @@ class _EasyPlayerMeta(type(PlayerEntity)):
     def __call__(cls, index, *args, **kwargs):
         """Instantiates the class.
 
-        If an instance with the index already exists, return it instead.
+        If an instance with the same userid already exists,
+        return it instead of creating a new one.
 
         :param index: Index of the player
         :type index: :class:`int`
@@ -270,31 +272,34 @@ class _EasyPlayerMeta(type(PlayerEntity)):
         # Get the instance dictionary for the class
         instances = _EasyPlayerMeta._classes[cls]
 
-        # If there is no instance with such index
-        if index not in instances:
+        # Get the player's userid
+        userid = userid_from_index(index)
+
+        # If there is no instance with such userid
+        if userid not in instances:
 
             # Normally create a new instance and cache it
-            instances[index] = super().__call__(index, *args, **kwargs)
+            instances[userid] = super().__call__(index, *args, **kwargs)
 
-        # Else return the existing cached instance
-        return instances[index]
+        # Return the cached instance
+        return instances[userid]
 
     @staticmethod
-    def discard_player(index):
+    def discard_player(userid):
         """Discard a player, removing him from all classes.
 
-        :param index: Index of the player to discard
-        :type index: :class:`int`
+        :param userid: UserID of the player to discard
+        :type userid: :class:`int`
         """
 
         # Loop through all of the instance dictionaries
         for instances in _EasyPlayerMeta._classes.values():
 
-            # If an instance of the player exist in the dictionary
-            if index in instances:
+            # If the player exist in the dictionary
+            if userid in instances:
 
                 # Remove him from the dict
-                del instances[index]
+                del instances[userid]
 
     @staticmethod
     def discard_all_players():
