@@ -366,7 +366,7 @@ class EasyPlayer(PlayerEntity, metaclass=_EasyPlayerMeta):
         if isinstance(duration, int) and duration > 0:
 
             # Start a delay which will revert the shift
-            tick_delays.delay(self.shift_property, prop_name, -shift)
+            tick_delays.delay(duration, self.shift_property, prop_name, -shift)
 
     def _update_move_type(self):
         """Update player's :attr:`move_type` to his player effects.
