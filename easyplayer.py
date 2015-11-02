@@ -13,6 +13,7 @@ from functools import wraps
 
 # Source.Python Imports
 #   Entities
+from entities.constants import CollisionGroup
 from entities.constants import MoveType
 from entities.constants import TakeDamage
 from entities.helpers import index_from_pointer
@@ -24,6 +25,7 @@ from events.listener import _EventListener
 from listeners import LevelShutdown
 from listeners.tick import tick_delays
 #   Players
+from players.constants import PlayerStates
 from players.entity import PlayerEntity
 from players.helpers import index_from_userid
 from players.helpers import userid_from_index
@@ -381,7 +383,7 @@ class EasyPlayer(PlayerEntity, metaclass=_EasyPlayerMeta):
         """
         if self._effects[type(self).noclip]:
             self.move_type = MoveType.NOCLIP
-        elif self._effects[type(self).freeze]:
+        elif self._effects[type(self).stuck]:
             self.move_type = MoveType.NONE
         elif self._effects[type(self).fly]:
             self.move_type = MoveType.FLY
@@ -390,7 +392,15 @@ class EasyPlayer(PlayerEntity, metaclass=_EasyPlayerMeta):
 
     noclip = PlayerEffect(_update_move_type, _update_move_type)
     freeze = PlayerEffect(_update_move_type, _update_move_type)
-    fly = PlayerEffect(_update_move_type, _update_move_type)
+    stuck = PlayerEffect(_update_move_type, _update_move_type)
+
+    @PlayerEffect
+    def freeze(self):
+        self.flags |= PlayerStates.FROZEN
+
+    @freeze.off
+    def freeze(self):
+        self.flags %= ~PlayerStates.FROZEN
 
     @PlayerEffect
     def burn(self):
@@ -407,3 +417,11 @@ class EasyPlayer(PlayerEntity, metaclass=_EasyPlayerMeta):
     @godmode.off
     def godmode(self):
         self.set_property_uchar('m_takedamage', TakeDamage.YES)
+
+    @PlayerEffect
+    def noblock(self):
+        self.collision_group = CollisionGroup.DEBRIS_TRIGGER
+
+    @noblock.off
+    def noblock(self):
+        self.collision_group = CollisionGroup.PLAYER
