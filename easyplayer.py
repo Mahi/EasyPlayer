@@ -26,7 +26,7 @@ from listeners import LevelShutdown
 from listeners.tick import tick_delays
 #   Players
 from players.constants import PlayerStates
-from players.entity import Player as SpPlayer
+from players.entity import Player
 from players.helpers import index_from_userid
 from players.helpers import userid_from_index
 #   Weapons
@@ -37,7 +37,7 @@ from weapons.entity import Weapon
 # >> ALL DECLARATION
 # =============================================================================
 __all__ = (
-    'Player',
+    'EasyPlayer',
     'PlayerEffect',
 )
 
@@ -245,7 +245,7 @@ class PlayerEffect(object):
 # =============================================================================
 # >> EASY PLAYER
 # =============================================================================
-class _EasyPlayerMeta(type(SpPlayer)):
+class _EasyPlayerMeta(type(Player)):
     """Metaclass for :class:`EasyPlayer` and its subclasses.
 
     Manages all the instances of :class:`EasyPlayer`,
@@ -312,7 +312,7 @@ class _EasyPlayerMeta(type(SpPlayer)):
             instances.clear()
 
 
-class EasyPlayer(SpPlayer, metaclass=_EasyPlayerMeta):
+class EasyPlayer(Player, metaclass=_EasyPlayerMeta):
     """Custom :class:`PlayerEntity` class with bonus player effects.
 
     Also implements restrictions and :method:`from_userid` classmethod.
