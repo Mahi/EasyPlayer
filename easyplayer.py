@@ -26,18 +26,18 @@ from listeners import LevelShutdown
 from listeners.tick import tick_delays
 #   Players
 from players.constants import PlayerStates
-from players.entity import PlayerEntity
+from players.entity import Player as SpPlayer
 from players.helpers import index_from_userid
 from players.helpers import userid_from_index
 #   Weapons
-from weapons.entity import WeaponEntity
+from weapons.entity import Weapon
 
 
 # =============================================================================
 # >> ALL DECLARATION
 # =============================================================================
 __all__ = (
-    'EasyPlayer',
+    'Player',
     'PlayerEffect',
 )
 
@@ -51,7 +51,7 @@ def _pre_bump_weapon(args):
 
     # Get the player and weapon entities
     player = EasyPlayer(index_from_pointer(args[0]))
-    weapon = WeaponEntity(index_from_pointer(args[1]))
+    weapon = Weapon(index_from_pointer(args[1]))
 
     # Return False if the weapon is restricted for the player
     if weapon.classname in player.restrictions:
@@ -245,7 +245,7 @@ class PlayerEffect(object):
 # =============================================================================
 # >> EASY PLAYER
 # =============================================================================
-class _EasyPlayerMeta(type(PlayerEntity)):
+class _EasyPlayerMeta(type(SpPlayer)):
     """Metaclass for :class:`EasyPlayer` and its subclasses.
 
     Manages all the instances of :class:`EasyPlayer`,
@@ -312,7 +312,7 @@ class _EasyPlayerMeta(type(PlayerEntity)):
             instances.clear()
 
 
-class EasyPlayer(PlayerEntity, metaclass=_EasyPlayerMeta):
+class EasyPlayer(SpPlayer, metaclass=_EasyPlayerMeta):
     """Custom :class:`PlayerEntity` class with bonus player effects.
 
     Also implements restrictions and :method:`from_userid` classmethod.
@@ -392,14 +392,14 @@ class EasyPlayer(PlayerEntity, metaclass=_EasyPlayerMeta):
 
     noclip = PlayerEffect(_update_move_type, _update_move_type)
     freeze = PlayerEffect(_update_move_type, _update_move_type)
-    stuck = PlayerEffect(_update_move_type, _update_move_type)
+    fly = PlayerEffect(_update_move_type, _update_move_type)
 
     @PlayerEffect
-    def freeze(self):
+    def paralyze(self):
         self.flags |= PlayerStates.FROZEN
 
-    @freeze.off
-    def freeze(self):
+    @paralyze.off
+    def paralyze(self):
         self.flags %= ~PlayerStates.FROZEN
 
     @PlayerEffect
