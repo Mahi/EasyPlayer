@@ -132,11 +132,15 @@ class _PlayerEffect(object):
         self._player = player
         self._delay = None
 
-    def _enable(self, duration=None):
+    def _enable(self, duration=None, *args, **kwargs):
         """Enable the effect.
 
         :param duration: Duration after which to cancel the effect
         :type duration: :class:`int`|:class:`NoneType`
+        :param *args: Arguments to forward to the on function
+        :type *args: :class:`tuple`
+        :param *kwargs: Keyword arguments to forward to the on function
+        :type *kwargs: :class:`dict`
         """
 
         # If the duration is a positive integer
@@ -149,21 +153,31 @@ class _PlayerEffect(object):
         self._player._effects[self._descriptor_obj].append(self)
 
         # Call the descriptor object's on-function on the player
-        self._descriptor_obj._on_f(self._player)
+        self._descriptor_obj._on_f(self._player, *args, **kwargs)
 
-    def __call__(self, duration=None):
+    def __call__(self, duration=None, *args, **kwargs):
         """Override () to call :func:`_enable`.
 
         :param duration: Duration after which to cancel the effect
         :type duration: :class:`int`|:class:`NoneType`
         :returns: self
         :rtype: :class:`_PlayerEffect`
+        :param *args: Arguments to forward to the on function
+        :type *args: :class:`tuple`
+        :param *kwargs: Keyword arguments to forward to the on function
+        :type *kwargs: :class:`dict`
         """
-        self._enable(duration)
+        self._enable(duration, *args, **kwargs)
         return self
 
-    def _disable(self):
-        """Disable the effect."""
+    def _disable(self, *args, **kwargs):
+        """Disable the effect.
+
+        :param *args: Arguments to forward to the off function
+        :type *args: :class:`tuple`
+        :param *kwargs: Keyword arguments to forward to the off function
+        :type *kwargs: :class:`dict`
+        """
 
         # Remove the effect from the player's effects
         self._player._effects[self._descriptor_obj].remove(self)
@@ -172,10 +186,16 @@ class _PlayerEffect(object):
         if not self._player._effects[self._descriptor_obj]:
 
             # Call the descriptor o bject's off-function on the player
-            self._descriptor_obj._off_f(self._player)
+            self._descriptor_obj._off_f(self._player, *args, **kwargs)
 
-    def cancel(self):
-        """Cancel the tick_delay and disable the effect."""
+    def cancel(self, *args, **kwargs):
+        """Cancel the tick_delay and disable the effect.
+
+        :param *args: Arguments to forward to the off function
+        :type *args: :class:`tuple`
+        :param *kwargs: Keyword arguments to forward to the off function
+        :type *kwargs: :class:`dict`
+        """
 
         # If there is a delay object
         if self._delay is not None:
@@ -185,7 +205,7 @@ class _PlayerEffect(object):
             self._delay = None
 
         # Disable the effect
-        self._disable()
+        self._disable(*args, **kwargs)
 
 
 class PlayerEffect(object):
