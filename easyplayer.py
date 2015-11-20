@@ -1,4 +1,4 @@
-# ../packages/custom/easyplayer.py
+# ../addons/source-player/packages/custom/easyplayer.py
 
 """Provides :class:`EasyPlayer` and :class:`PlayerEffect` classes."""
 
@@ -403,7 +403,7 @@ class EasyPlayer(Player, metaclass=_EasyPlayerMeta):
         """
         if self._effects[type(self).noclip]:
             self.move_type = MoveType.NOCLIP
-        elif self._effects[type(self).stuck]:
+        elif self._effects[type(self).freeze]:
             self.move_type = MoveType.NONE
         elif self._effects[type(self).fly]:
             self.move_type = MoveType.FLY
