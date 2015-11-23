@@ -57,6 +57,17 @@ def _pre_bump_weapon(args):
     if weapon.classname in player.restrictions:
         return False
 
+@EntityPreHook(EntityCondition.is_player, 'buy_internal')
+def _on_buy_internal(args):
+    """Hooks buy_internal function to implement buy restrictions."""
+
+    # Get the player and weapon purchased
+    player = EasyPlayer(index_from_pointer(args[0]))
+    weapon = 'weapon_{}'.format(args[1])
+
+    # Return 0 if the weapon is restricted.
+    if weapon in player.restrictions:
+        return 0
 
 # Store the original fire_game_event method
 _original_fire_game_event = _EventListener.fire_game_event
