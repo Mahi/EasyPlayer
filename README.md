@@ -61,3 +61,5 @@ You can also use `from easyplayer import PlayerEffect` to create custom player e
 ### Final words
 Keep in mind that `EasyPlayer` is still in beta, and might contain some bugs.
 If you have any suggestions for improvements, or possibly new player effects you'd like to see, leave an issue (or a pull request) to this repository and I'll answer asap.
+
+[sp]: http://forums.sourcepython.com/
