@@ -22,7 +22,7 @@ from entities.hooks import EntityCondition
 #   Events
 from events.listener import _EventListener
 #   Listeners
-from listeners import LevelShutdown
+from listeners import OnLevelShutdown
 from listeners.tick import tick_delays
 #   Players
 from players.constants import PlayerStates
@@ -119,8 +119,8 @@ def _post_player_disconnect(game_event):
     _EasyPlayerMeta.discard_player(userid)
 
 
-@LevelShutdown
-def level_shutdown():
+@OnLevelShutdown
+def on_level_shutdown():
     """Clean up all players from all EasyPlayer classes."""
     _EasyPlayerMeta.discard_all_players()
 
