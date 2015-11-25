@@ -57,6 +57,7 @@ def _pre_bump_weapon(args):
     if weapon.classname in player.restrictions:
         return False
 
+
 @EntityPreHook(EntityCondition.is_player, 'buy_internal')
 def _on_buy_internal(args):
     """Hooks buy_internal function to implement buy restrictions."""
@@ -431,7 +432,7 @@ class EasyPlayer(Player, metaclass=_EasyPlayerMeta):
 
     @paralyze.off
     def paralyze(self):
-        self.flags %= ~PlayerStates.FROZEN
+        self.flags &= ~PlayerStates.FROZEN
 
     @PlayerEffect
     def burn(self):
