@@ -158,6 +158,12 @@ class EasyPlayer(Player, metaclass=_EasyPlayerMeta):
         else:
             EasyPlayer._data[self.userid][attr] = value
 
+    def __dir__(self):
+        """Return an alphabetized list of attributes for the instance."""
+        attributes = set(super().__dir__())
+        attributes |= EasyPlayer._data[self.userid].keys()
+        return sorted(attributes)
+
     @classmethod
     def from_userid(cls, userid):
         """Custom constructor to get an instance from an userid."""
