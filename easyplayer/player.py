@@ -148,16 +148,15 @@ class EasyPlayer(Player, metaclass=_EasyPlayerMeta):
         """Get an attribute's value from the _dict if all else fails."""
         if attr in EasyPlayer._data[self.userid]:
             return EasyPlayer._data[self.userid][attr]
-        return super().__getattribute__(attr)
+        return super().__getattr__(attr)
 
     def __setattr__(self, attr, value):
         """Set an attribute to the _dict if it's a new attribute."""
-        try:
-            super().__getattribute__(attr)
-        except AttributeError:
-            EasyPlayer._data[self.userid][attr] = value
-        else:
+        from entities.entity import Entity
+        if attr in super(Entity, self).__dir__():
             super().__setattr__(attr, value)
+        else:
+            EasyPlayer._data[self.userid][attr] = value
 
     @classmethod
     def from_userid(cls, userid):
