@@ -350,6 +350,9 @@ class EasyPlayer(Player, metaclass=_EasyPlayerMeta):
     Also implements restrictions and :method:`from_userid` classmethod.
     """
 
+    # A dictionary which stores all the EasyPlayer's attributes
+    _data = defaultdict(dict)
+
     def __init__(self, index):
         """Initializes an EasyPlayer instance.
 
@@ -361,6 +364,21 @@ class EasyPlayer(Player, metaclass=_EasyPlayerMeta):
         super().__init__(index)
         self._effects = defaultdict(list)
         self.restrictions = set()
+
+    def __getattr__(self, attr):
+        """Get an attribute's value from the _dict if all else fails."""
+        if attr in EasyPlayer._data[self.userid]:
+            return EasyPlayer._data[self.userid][attr]
+        return super().__getattribute__(attr)
+
+    def __setattr__(self, attr, value):
+        """Check to see if such attribute exists already."""
+        try:
+            super().__getattribute__(attr)
+        except AttributeError:
+            EasyPlayer._data[self.userid][attr] = value
+        else:
+            super().__setattr__(attr, value)
 
     @classmethod
     def from_userid(cls, userid):
