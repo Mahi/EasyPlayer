@@ -1,4 +1,4 @@
-"""Provides EasyPlayer class, a custom player entity class."""
+﻿"""Provides EasyPlayer class, a custom player entity class."""
 
 # Python 3 Impors
 import collections
@@ -152,8 +152,7 @@ class EasyPlayer(Player, metaclass=_EasyPlayerMeta):
 
     def __setattr__(self, attr, value):
         """Set an attribute to the _dict if it's a new attribute."""
-        from entities.entity import Entity
-        if attr in super(Entity, self).__dir__():
+        if attr in super().__dir__():
             super().__setattr__(attr, value)
         else:
             EasyPlayer._data[self.userid][attr] = value
