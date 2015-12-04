@@ -180,6 +180,11 @@ class EasyPlayer(Player, metaclass=_EasyPlayerMeta):
         """Get the player's Counter-Strike team."""
         return teams[self.team]
 
+    @property
+    def tf_team(self, teams=('un', 'spec', 'red', 'blue')):
+        """Get the player's Team Fortress team."""
+        return teams[self.team]
+
     def shift_property(self, prop_name, shift, duration=None):
         """Shifts player's property's value.
 
