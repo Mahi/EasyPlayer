@@ -175,6 +175,11 @@ class EasyPlayer(Player, metaclass=_EasyPlayerMeta):
                 effect.cancel()
         self._effects.clear()
 
+    @property
+    def cs_team(self, teams=('un', 'spec', 't', 'ct')):
+        """Get the player's Counter-Strike team."""
+        return teams[self.team]
+
     def shift_property(self, prop_name, shift, duration=None):
         """Shifts player's property's value.
 
