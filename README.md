@@ -56,7 +56,7 @@ There's even a built-in restriction system in `EasyPlayer`! You can use it by ac
 Finally, I've added `cs_team` and `tf_team` properties which return the player's team as a string which is usable with Source.Python's `is_filters` and `not_filters`.
 
 ### How to install and use?
-To install `EasyPlayer` on your server with [Source.Python][sp] installed, simply drag and drop the `easyplayer` package into your `../addons/source-python/packages/custom/` directory, and restart your game server.
+To install `EasyPlayer` on your server with [Source.Python][sp] installed, simply drag and drop the `addons` folder into your game's directory (`csgo`, `cstrike`, `tf2`, etc.), and restart your game server.
 To use `EasyPlayer` in your plugins, simply import it using `from easyplayer import EasyPlayer`. You can now either subclass your own player class from it, or use it as-is in your code.
 You can also use `from easyplayer import PlayerEffect` to create custom player effects for your subclasses. You should study the `easyplayer` package's content to learn more about how `PlayerEffect`'s work.
 
