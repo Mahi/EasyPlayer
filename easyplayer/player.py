@@ -194,7 +194,8 @@ class EasyPlayer(Player, metaclass=_EasyPlayerMeta):
         old_value = getattr(self, prop_name)
         setattr(self, prop_name, old_value + shift)
         if isinstance(duration, int) and duration > 0:
-            tick_delays.delay(duration, self.shift_property, prop_name, -shift)
+            return tick_delays.delay(
+                duration, self.shift_property, prop_name, -shift)
 
     def _update_move_type(self):
         """Update player's move_type to match his player effects.
