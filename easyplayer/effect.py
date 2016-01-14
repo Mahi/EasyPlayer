@@ -1,7 +1,7 @@
 """Provides the PlayerEffect class for creating player effects."""
 
 # Python 3 Impors
-from listeners.tick import tick_delays
+from listeners.tick import Delay
 
 
 class _PlayerEffect(object):
@@ -29,7 +29,7 @@ class _PlayerEffect(object):
         automatically disables the effect after the duration.
         """
         if isinstance(duration, int) and duration > 0:
-            self._delay = tick_delays.delay(duration, self._disable)
+            self._delay = Delay(duration, self._disable)
         self._player._effects[self._descriptor_obj].append(self)
         self._descriptor_obj._on_f(self._player, *args, **kwargs)
 
@@ -52,7 +52,7 @@ class _PlayerEffect(object):
     def cancel(self, *args, **kwargs):
         """Cancel the tick_delay and disable the effect."""
         if self._delay is not None:
-            tick_delays.cancel_delay(self._delay)
+            self._delay.cancel()
             self._delay = None
         self._disable(*args, **kwargs)
 
