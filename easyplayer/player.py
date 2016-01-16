@@ -15,7 +15,7 @@ from entities.hooks import EntityCondition
 from events.listener import _EventListener
 
 from listeners import OnLevelShutdown
-from listeners.tick import tick_delays
+from listeners.tick import Delay
 
 from players.constants import PlayerStates
 from players.entity import Player
@@ -194,7 +194,7 @@ class EasyPlayer(Player, metaclass=_EasyPlayerMeta):
         old_value = getattr(self, prop_name)
         setattr(self, prop_name, old_value + shift)
         if isinstance(duration, int) and duration > 0:
-            return tick_delays.delay(
+            return Delay(
                 duration, self.shift_property, prop_name, -shift)
 
     def _update_move_type(self):
