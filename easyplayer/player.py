@@ -54,7 +54,7 @@ _original_fire_game_event = _EventListener.fire_game_event
 def _fire_game_event(self, game_event):
     """Custom fire_game_event method which ensures post game events."""
     _original_fire_game_event(self, game_event)
-    event_name = game_event.get_name()
+    event_name = game_event.name
     if event_name == 'player_death':
         _post_player_death(game_event)
     elif event_name == 'player_disconnect':
@@ -67,7 +67,7 @@ _EventListener.fire_game_event = _fire_game_event
 
 def _post_player_death(game_event):
     """Reset the player's effects, restrictions, and gravity."""
-    userid = game_event.get_int('userid')
+    userid = game_event['userid']
     player = EasyPlayer.from_userid(userid)
     player.gravity = 1.0
     player.restrictions.clear()
@@ -76,7 +76,7 @@ def _post_player_death(game_event):
 
 def _post_player_disconnect(game_event):
     """Clean up the player from all EasyPlayer classes."""
-    userid = game_event.get_int('userid')
+    userid = game_event['userid']
     player = EasyPlayer.from_userid(userid)
     player.cancel_all_effects()
     _EasyPlayerMeta.discard_player(userid)
