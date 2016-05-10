@@ -8,9 +8,6 @@ import functools
 from entities.constants import CollisionGroup
 from entities.constants import MoveType
 from entities.constants import TakeDamage
-from entities.helpers import index_from_pointer
-from entities.hooks import EntityPreHook
-from entities.hooks import EntityCondition
 
 from events.listener import _EventListener
 
@@ -22,28 +19,8 @@ from players.entity import Player
 from players.helpers import index_from_userid
 from players.helpers import userid_from_index
 
-from weapons.entity import Weapon
-
 # EasyPlayer Imports
 from easyplayer.effect import PlayerEffect
-
-
-@EntityPreHook(EntityCondition.is_player, 'bump_weapon')
-def _pre_bump_weapon(args):
-    """Prevent the weapon bump if the weapon is restricted."""
-    player = EasyPlayer(index_from_pointer(args[0]))
-    weapon = Weapon(index_from_pointer(args[1]))
-    if weapon.classname in player.restrictions:
-        return False
-
-
-@EntityPreHook(EntityCondition.is_player, 'buy_internal')
-def _on_buy_internal(args):
-    """Prevent the weapon buy if the weapon is restricted."""
-    player = EasyPlayer(index_from_pointer(args[0]))
-    weapon = 'weapon_{}'.format(args[1])
-    if weapon in player.restrictions:
-        return 0
 
 
 # Store the original fire_game_event method
