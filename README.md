@@ -34,25 +34,6 @@ Keep in mind that none of these function calls interfere with each other, so cal
 ### Anything else EasyPlayer does?
 You can subclass `EasyPlayer` as you please, and it shouldn't interfere with any of the mechanisms (unless you override some of the methods, obviously). You can create your own player effects to your subclass using the `@PlayerEffect` decorator. See examples from the bottom of `easyplayer/player.py` module.
 `EasyPlayer` also resets player's gravity on death (because Source engine chose not to reset gravity although it resets all the other properties) and implements `from_userid(userid)` classmethod to get an instance directly from an userid.
-There's even a built-in restriction system in `EasyPlayer`! You can use it by accessing player's `restrictions` set to restrict him from using certain weapons. Here's an example:
-
-    from easyplayer import EasyPlayer
-    from filters.weapons import WeaponClassIter
-    from events import Event
- 
-    @Event('player_spawn')
-    def on_spawn(userid, **eargs):
-        player = EasyPlayer.from_userid(userid)
-
-        # Restrict everything
-        player.restrictions = set(WeaponClassIter(return_types='classname'))
-
-        # Except knife
-        player.restrictions.remove('weapon_knife')
-
-        # Actually, allow awp and deagle too
-        player.restrictions -= {'weapon_awp', 'weapon_deagle'}
-
 Finally, I've added `cs_team` and `tf_team` properties which return the player's team as a string which is usable with Source.Python's `is_filters` and `not_filters`.
 
 ### How to install and use?
