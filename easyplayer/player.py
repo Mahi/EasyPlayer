@@ -1,10 +1,23 @@
-﻿from listeners.tick import Delay
+﻿from events import Event
+from listeners.tick import Delay
 from players.entity import Player as SourcePythonPlayer
 from players.helpers import index_from_userid
 
 __all__ = (
     'Player',
 )
+
+
+@Event('player_death')
+def _on_player_death(event):
+    """Callback for resetting player's gravity on death.
+
+    For some reason Valve chose not to reset gravity, although they
+    reset most other properties (speed, color, etc.) which is usually
+    an inconvenience, so this will reset the gravity for us.
+    """
+    player = Player.from_userid(event['userid'])
+    player.gravity = 1.0
 
 
 class Player(SourcePythonPlayer):
