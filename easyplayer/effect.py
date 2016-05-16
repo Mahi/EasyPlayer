@@ -71,3 +71,60 @@ class Effect:
     def is_enabled_for(self, player):
         """Check if the effect is enabled for a player."""
         return self._counter[player.userid] > 0
+
+
+class _EffectHandler:
+    """Natural way for using effects directly through a player instance.
+
+    Instead of:
+
+        PlayerClass.my_effect.enable_for(player_instance)
+
+    You simply write:
+
+        player_instance.my_effect()
+
+    This will return a handler instance with a cancel method to cancel
+    the effect:
+
+        effect = player_instance.my_effect()
+        effect.cancel()
+
+    Handler also allows a duration to be applied on an effect via
+    an additional duration parameter. Effects with a duration can
+    also be cancelled manually via the cancel method:
+
+        freeze = player.freeze(duration=5)  # Keywording is optional
+        freeze.cancel()  # Cancel manually before 5 seconds has passed
+    """
+
+    def __init__(self, effect, player):
+        """Initialize a handler which links an effect and a player."""
+        self.effect = effect
+        self.player = player
+        self._delay = None
+
+    def __call__(self, duration=None):
+        """Enable the effect for the player.
+
+        If a duration is passed, the effect will get automatically
+        cancelled after the duration has ended.
+        """
+        self.effect.enable_for(self.player)
+        if duration is not None:
+            self._delay = Delay(duration, self.effect.disable_for, self.player)
+        return self
+
+    def cancel(self):
+        """Cancel the enabled effect.
+
+        Also cancels the delay if a duration was passed when enabled.
+        """
+        if self._delay is not None:
+            self._delay.cancel()
+            self._delay = None
+        self.effect.disable_for(self.player)
+
+    def is_enabled(self):
+        """Check if the effect is enabled for the player."""
+        return self.effect.is_enabled_for(self.player)
