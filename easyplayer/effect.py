@@ -72,6 +72,16 @@ class Effect:
         """Check if the effect is enabled for a player."""
         return self._counter[player.userid] > 0
 
+    def get_handler_for(self, player):
+        """Get an `_EffectHandler` instance for a player."""
+        return _EffectHandler(self, player)
+
+    def __get__(self, player, player_cls=None):
+        """Get a handler when called throgh a player instance."""
+        if player is None:
+            return self
+        return _EffectHandler(self, player)
+
 
 class _EffectHandler:
     """Natural way for using effects directly through a player instance.
