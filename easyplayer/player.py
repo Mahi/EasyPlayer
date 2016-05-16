@@ -3,6 +3,8 @@ from listeners.tick import Delay
 from players.entity import Player as SourcePythonPlayer
 from players.helpers import index_from_userid
 
+from .effect import Effect
+
 __all__ = (
     'Player',
 )
@@ -61,3 +63,35 @@ class Player(SourcePythonPlayer):
         setattr(self, prop_name, value + shift)
         if duration is not None:
             return Delay(duration, self.shift_property, prop_name, -shift)
+
+    @Effect
+    def burn(self):
+        self.ignite_lifetime(7200)
+
+    @burn.off
+    def burn(self):
+        self.ignite_lifetime(0)
+
+    @Effect
+    def godmode(self):
+        super().set_godmode(True)
+
+    @godmode.off
+    def godmode(self):
+        super().set_godmode(False)
+
+    @Effect
+    def noblock(self):
+        super().set_noblock(True)
+
+    @noblock.off
+    def noblock(self):
+        super().set_noblock(False)
+
+    @Effect
+    def paralyze(self):
+        super().set_frozen(True)
+
+    @paralyze.off
+    def paralyze(self):
+        super().set_frozen(False)
