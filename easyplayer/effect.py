@@ -56,7 +56,7 @@ class Effect:
         Calls the on function if the count was at zero.
         """
         self._counter[player.userid] += 1
-        if self._counter[player.userid] == 0:
+        if self._counter[player.userid] == 1:
             self.on_f(player)
 
     def disable_for(self, player):
