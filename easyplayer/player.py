@@ -116,16 +116,16 @@ class Player(SourcePythonPlayer):
             self.move_type = MoveType.WALK
 
     noclip = Effect(
-        functools.partial(_enable_move_type, MoveType.NOCLIP),
-        functools.partial(_disable_move_type, MoveType.NOCLIP))
+        functools.partial(_enable_move_type, move_type=MoveType.NOCLIP),
+        functools.partial(_disable_move_type, move_type=MoveType.NOCLIP))
 
     freeze = Effect(
-        functools.partial(_enable_move_type, MoveType.NONE),
-        functools.partial(_disable_move_type, MoveType.NONE))
+        functools.partial(_enable_move_type, move_type=MoveType.NONE),
+        functools.partial(_disable_move_type, move_type=MoveType.NONE))
 
     fly = Effect(
-        functools.partial(_enable_move_type, MoveType.FLY),
-        functools.partial(_disable_move_type, MoveType.FLY))
+        functools.partial(_enable_move_type, move_type=MoveType.FLY),
+        functools.partial(_disable_move_type, move_type=MoveType.FLY))
 
     @Effect
     def burn(self):
