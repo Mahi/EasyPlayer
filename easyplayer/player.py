@@ -74,7 +74,7 @@ class Player(SourcePythonPlayer):
         pairs in the order of noclip, freeze, fly.
         """
         yield self.noclip, MoveType.NOCLIP
-        yield self.freeze, MoveType.FREEZE
+        yield self.freeze, MoveType.NONE
         yield self.fly, MoveType.FLY
 
     def _enable_move_type(self, move_type):
@@ -120,8 +120,8 @@ class Player(SourcePythonPlayer):
         functools.partial(_disable_move_type, MoveType.NOCLIP))
 
     freeze = Effect(
-        functools.partial(_enable_move_type, MoveType.FREEZE),
-        functools.partial(_disable_move_type, MoveType.FREEZE))
+        functools.partial(_enable_move_type, MoveType.NONE),
+        functools.partial(_disable_move_type, MoveType.NONE))
 
     fly = Effect(
         functools.partial(_enable_move_type, MoveType.FLY),
