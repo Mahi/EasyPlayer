@@ -43,11 +43,10 @@ _EventListener.fire_game_event = _fire_game_event
 
 
 def _post_player_death(game_event):
-    """Reset the player's effects, restrictions, and gravity."""
+    """Reset the player's effects and gravity."""
     userid = game_event['userid']
     player = EasyPlayer.from_userid(userid)
     player.gravity = 1.0
-    player.restrictions.clear()
     player.cancel_all_effects()
 
 
@@ -107,7 +106,7 @@ class _EasyPlayerMeta(type(Player)):
 class EasyPlayer(Player, metaclass=_EasyPlayerMeta):
     """Custom player entity class with additional player effects.
 
-    Also implements restrictions and from_userid classmethod.
+    Also implements from_userid classmethod.
     All attributes are stored into EasyPlayer._data dictionary
     to allow multiple instances to use the same data.
     """
@@ -116,10 +115,9 @@ class EasyPlayer(Player, metaclass=_EasyPlayerMeta):
     _data = collections.defaultdict(dict)
 
     def __init__(self, index):
-        """Initializes a player with effects and restrictions."""
+        """Initializes a player with effects."""
         super().__init__(index)
         self._effects = collections.defaultdict(list)
-        self.restrictions = set()
 
     def __getattr__(self, attr):
         """Get an attribute's value from the _dict if all else fails."""
