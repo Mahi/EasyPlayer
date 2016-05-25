@@ -4,7 +4,6 @@ from entities.constants import MoveType
 from events import Event
 from listeners.tick import Delay
 from players.entity import Player as SourcePythonPlayer
-from players.helpers import index_from_userid
 
 from .effect import Effect
 
@@ -31,11 +30,6 @@ class Player(SourcePythonPlayer):
     Takes full advantage of the `Effect` class, and implements
     some other missing functionality from Source.Python's player class.
     """
-
-    @classmethod
-    def from_userid(cls, userid):
-        """Get a player instance directly from an userid."""
-        return cls(index_from_userid(userid))
 
     @property
     def cs_team(self):

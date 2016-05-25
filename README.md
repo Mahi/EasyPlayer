@@ -36,7 +36,6 @@ Keep in mind that none of these function calls interfere with each other, so cal
 Quite a lot actually!
 
 - Resets player's gravity on death, because Source engine doesn't, although it resets all the other properties.
-- Implements `Player.from_userid(userid)` classmethod to get an instance directly from an userid.
 - Implements `Player.shift_property(prop_name, shift, duration=None)` which shifts an integer property by the provided shift. If a duration was passed, the shift will be reverted after that many seconds have passed.
 - Allows easy subclassing of `easyplayer.Player` without interfering with any of the mechanisms (unless you override some of the methods, obviously). You can even create custom effects to your subclass using the `easyplayer.Effect` class. See examples from the bottom of the `easyplayer/player.py` file.
 - Implements `cs_team` and `tf_team` properties which return the player's team as a string which is usable with Source.Python's filters.
