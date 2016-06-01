@@ -131,24 +131,24 @@ class Player(SourcePythonPlayer):
 
     @Effect
     def godmode(self):
-        super().set_godmode(True)
+        self.set_godmode(True)
 
     @godmode.off
     def godmode(self):
-        super().set_godmode(False)
+        self.set_godmode(False)
 
     @Effect
     def noblock(self):
-        super().set_noblock(True)
+        self.set_noblock(True)
 
     @noblock.off
     def noblock(self):
-        super().set_noblock(False)
+        self.set_noblock(False)
 
     @Effect
     def paralyze(self):
-        super().set_frozen(True)
+        self.set_frozen(True)
 
     @paralyze.off
     def paralyze(self):
-        super().set_frozen(False)
+        self.set_frozen(False)
