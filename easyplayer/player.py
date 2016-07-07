@@ -71,55 +71,25 @@ class Player(SourcePythonPlayer):
         yield self.freeze, MoveType.NONE
         yield self.fly, MoveType.FLY
 
-    def _enable_move_type(self, move_type):
-        """Enable a move type for a player.
-
-        This will only change player's move type if there's no move type
-        enabled with priority higher than the one we're enabling.
-        It will, however, remember that the move type was set, so if
-        the higher priority move type gets disabled, this new move type
-        gets set for the player.
+    def _update_move_type(self):
+        """Update player's move type.
+        
+        Loops through all the move types in order with
+        :meth:`_move_types_by_priority()` and sets the player's
+        movement type to the first one which has an enabled
+        effect for the player, or ``MoveType.WALK``
+        if none are enabled.
         """
-        for effect, mt in self._move_types_by_priority():
-            # We reached desired move type without a higher priority
-            # move type being enabled (see elif below) so we enable
-            # the move type regardless of lower priority move types
-            if mt == move_type:
+        for effect, move_type in self._move_types_by_priority():
+            if effect.is_enabled():
                 self.move_type = move_type
                 break
-            # A higher priority move type is enabled before we reach
-            # desired move type. Just break and don't change anything.
-            elif effect.is_enabled():
-                break
-
-    def _disable_move_type(self, move_type):
-        """Disable a move type from the player.
-
-        If the player's move type was currently this move type,
-        this will switch to the one with second highes priority.
-        If no other custom move type is enabled, the player shall walk.
-        """
-        for effect, mt in self._move_types_by_priority():
-            # Set player's move type to the first enabled move type
-            # other than the one we're disabling at the moment
-            if effect.is_enabled() and mt != move_type:
-                self.move_type = mt
-                break
-        # When no other move type is enabled, we walk
         else:
             self.move_type = MoveType.WALK
 
-    noclip = Effect(
-        functools.partial(_enable_move_type, move_type=MoveType.NOCLIP),
-        functools.partial(_disable_move_type, move_type=MoveType.NOCLIP))
-
-    freeze = Effect(
-        functools.partial(_enable_move_type, move_type=MoveType.NONE),
-        functools.partial(_disable_move_type, move_type=MoveType.NONE))
-
-    fly = Effect(
-        functools.partial(_enable_move_type, move_type=MoveType.FLY),
-        functools.partial(_disable_move_type, move_type=MoveType.FLY))
+    noclip = Effect(_update_move_type, _update_move_type)
+    freeze = Effect(_update_move_type, _update_move_type)
+    fly = Effect(_update_move_type, _update_move_type)
 
     @Effect
     def burn(self):
