@@ -59,7 +59,7 @@ class Player(SourcePythonPlayer):
         value = getattr(self, prop_name)
         setattr(self, prop_name, value + shift)
         if duration is not None:
-            return Delay(duration, self.shift_property, prop_name, -shift)
+            return Delay(duration, self.shift_property, (prop_name, -shift))
 
     def _move_types_by_priority(self):
         """Get player's effects and move types ordered by priority.
