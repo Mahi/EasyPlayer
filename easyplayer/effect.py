@@ -122,7 +122,7 @@ class _EffectHandler:
         """
         self.effect.enable_for(self.player)
         if duration is not None:
-            self._delay = Delay(duration, self.effect.disable_for, self.player)
+            self._delay = Delay(duration, self.effect.disable_for, (self.player,))
         return self
 
     def cancel(self):
