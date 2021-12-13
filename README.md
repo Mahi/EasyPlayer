@@ -1,18 +1,25 @@
 # EasyPlayer
-### What is EasyPlayer?
-EasyPlayer is a custom package for [Source.Python][sp], designed to make it easier for plugin developers to interfere with player entities.
-EasyPlayer's main feature is the ability to manage what I call "player effects" (like burn and freeze), so that you can safely use the effects without having to worry about someone else using them simultaneously in their own plugins.
+EasyPlayer is a custom package for [Source.Python][sp],
+designed to make it easier for plugin developers to interfere with player entities and events.
 
-Imagine the following scenario *without* EasyPlayer: 
+## Player Effects
 
-1. Someone else's plugin freezes the player using `player.move_type = MoveType.NONE`.
-2. You apply a freeze to a player using the same command (although it doesn't do anything since he's already frozen, but you don't know that).
-3. The other guy's plugin unfreezes the player using `player.move_type = MoveType.WALK` to remove their own freeze.
-4. This causes your freeze to end prematurely, even if it was supposed to last for multiple seconds.
+EasyPlayer's original purpose is the ability to manage what I call "player effects" (burn, freeze, noclip...),
+so that you can safely use the effects without having to worry about someone else using them simultaneously in their own plugins.
 
-If everyone were to use EasyPlayer, this wouldn't happen as EasyPlayer manages the way these player effects are applied and removed. It makes sure a player doesn't get unfrozen until every freeze applied on him has ended.
+*Without* EasyPlayer installed, you might run into a scenario where your plugin applies an effect on a player,
+only to have someone elses plugin immediately cancel the effect.
+This is caused by both plugins modifying the same player's variable, for example `player.move_type`:
 
-### How to use EasyPlayer?
+1. Plugin A sets `player.move_type = MoveType.NONE` to freeze a player.
+2. Plugin B sets `player.move_type = MoveType.NOCLIP` to noclip the same player.
+3. Plugin A cancels the freeze with `player.move_type = MoveType.WALK`.
+4. Plugin B's noclip was also cancelled, and the player lost his noclip for good.
+
+If everyone were to use EasyPlayer, this wouldn't happen as EasyPlayer manages the way these player effects are applied and removed.
+It makes sure a player doesn't lose an effect until every effect of that type has ended.
+
+### How to use PlayerEffects?
 Currently you can call any of the following player effect functions on the player:
 
     player.noclip()
@@ -22,27 +29,59 @@ Currently you can call any of the following player effect functions on the playe
     player.noblock()
     player.godmode()
 
-You can pass in a duration as an optional argument to make the effect temporary (as opposed to permanent). For example: `player.noclip(3)` gives a noclip for three seconds.
+You can pass in a duration as an optional argument to make the effect temporary (as opposed to permanent).
+For example: `player.noclip(3)` gives a noclip for three seconds.
 
-All of these effect function calls return an `_EffectHandler` instance. To remove an infinite effect, or an effect with a duration that hasn't ended yet, store the returned instance and call `.cancel()` on it:
+All of these effect calls return an `_EffectHandler` instance.
+To remove an infinite effect, or to prematurely cancel an effect with a duration,
+store the returned instance and call `.cancel()` on it:
 
     freeze = player.freeze(duration=10)  # Keywording is optional!
-    freeze.cancel() # Cancel manually before duration has ended
+    freeze.cancel()  # Cancel manually before duration has ended
 
-Keep in mind that none of these function calls interfere with each other, so calling `.cancel()` might not unfreeze the player completely; it simply removes the freeze you've applied, but the player might still be frozen by someone else.
+Keep in mind that none of these function calls interfere with each other, so calling `.cancel()` might not unfreeze the player completely;
+it simply removes the freeze you've applied, but the player might still be frozen by someone else.
 
-### Anything else EasyPlayer does?
+## Events
 
-Quite a lot actually!
+EasyPlayer also provides an `EventManager` class to manage both GameEvents and custom events in an easy and uniform manner.
+It simplifies Source.Python's event management by replacing all the awkward `userid`s with Player instances of your choice.
+In other words, your event listeners will be receiving your player objects as arguments, instead of userids.
 
-- Resets player's gravity on death, because Source engine doesn't, although it resets all the other properties.
-- Implements `Player.shift_property(prop_name, shift, duration=None)` which shifts an integer property by the provided shift. If a duration was passed, the shift will be reverted after that many seconds have passed.
-- Allows easy subclassing of `easyplayer.Player` without interfering with any of the mechanisms (unless you override some of the methods, obviously). You can even create custom effects to your subclass using the `easyplayer.Effect` class. See examples from the bottom of the `easyplayer/player.py` file.
-- Implements `cs_team` and `tf_team` properties which return the player's team as a string which is usable with Source.Python's filters.
+While at it, I decided to split the player events that have an attacker and a victim into two:
+- `player_death` is now `player_attack` and `player_death`
+- `player_hurt` is now `player_attack` and `player_victim`
 
-### How to install and use?
+This allows you to more easily react to a player killing an opponent vs a player dying.
+
+### How to use the easy events?
+Simply create a Source.Python `PlayerDictionary` like you normally would, and forward it to the `EventManager` constructor:
+
+    player_dict = PlayerDictionary(MyPlayer)  # MyPlayer doesn't have to subclass EasyPlayer, but why wouldn't it? ;)
+    events = easyplayer.EventManager(player_dict)  # Will now use your player_dict to find players for events!
+
+    @events.on('player_kill')  # Remember, new events!
+    def on_player_kill(player, victim, **eargs):  # You can pick any arguments from the event args (eargs)
+        print(player.my_custom_attribute)  # No userids, no index conversions...
+
+That's easy.
+
+## Anything else?
+
+EasyPlayer also:
+
+- Resets player's gravity, color, and more on death, because Source engine only resets *some* of the player's properties.
+- Implements `Player.shift_property(prop_name, shift, duration=None)` which shifts an integer property by the provided shift.
+  If a duration was passed, the shift will be reverted after that many seconds have passed.
+- Allows easy subclassing of `easyplayer.Player` without interfering with any of the mechanisms.
+  You can even create custom effects to your subclass using the `easyplayer.Effect` class.
+  See examples at the bottom of the `easyplayer/player.py` file.
+- Implements `cs_team` and `tf_team` properties which return the player's team as a string, which is usable with Source.Python's filters.
+- Implements `hip_location`, `stomach_location`, and `chest_location` for the player.
+
+## How to install and use?
+
 To install EasyPlayer onto your game server:
-
 
 1. Make sure you have [Source.Python][sp] installed.
 2. Download it from [the releases page][rel].
@@ -51,9 +90,8 @@ To install EasyPlayer onto your game server:
 
 To use EasyPlayer in your plugins:
 
-- Import it using `from easyplayer import Player`.
-- You can either subclass your own player class from it, or use it as-is in your code.
-- You can also use `from easyplayer import Effect` to create your own player effects for your subclasses. You should study the `easyplayer` package's content to learn more about how `Effect` works.
+- Import it using `import easyplayer`.
+- See `examples` directory to get started with the usage! :)
 
 [sp]: http://forums.sourcepython.com/
 [rel]: https://github.com/Mahi/EasyPlayer/releases
