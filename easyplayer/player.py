@@ -1,7 +1,7 @@
-﻿import functools
-
+﻿from colors import Color
 from entities.constants import MoveType
 from events import Event
+from filters.weapons import WeaponClassIter
 from listeners.tick import Delay
 from players.entity import Player as SourcePythonPlayer
 
@@ -14,14 +14,18 @@ __all__ = (
 
 @Event('player_death')
 def _on_player_death(event):
-    """Callback for resetting player's gravity on death.
+    """Callback for resetting player's attributes on death.
 
-    For some reason Valve chose not to reset gravity, although they
-    reset most other properties (speed, color, etc.) which is usually
-    an inconvenience, so this will reset the gravity for us.
+    For some reason Valve/SP Team chose not to reset things like
+    gravity, color, weapon restcrictions, etc. although they
+    reset most other properties (speed, health...).
     """
     player = Player.from_userid(event['userid'])
     player.gravity = 1.0
+    player.color = Color(255, 255, 255)
+    for weapon in WeaponClassIter():
+        if player.is_weapon_restricted(weapon.name):
+            player.unrestrict_weapons(weapon.name)
 
 
 class Player(SourcePythonPlayer):
@@ -46,6 +50,27 @@ class Player(SourcePythonPlayer):
         This string is compatible with Source.Python's filters.
         """
         return ('un', 'spec', 'red', 'blue')[self.team]
+
+    @property
+    def chest_location(self):
+        """Get the player's chest's location."""
+        origin = self.origin
+        origin.z += 50
+        return origin
+
+    @property
+    def stomach_location(self):
+        """Get the player's stomach's location."""
+        origin = self.origin
+        origin.z += 40
+        return origin
+
+    @property
+    def hip_location(self):
+        """Get the player's hips's location."""
+        origin = self.origin
+        origin.z += 32
+        return origin
 
     def shift_property(self, prop_name, shift, duration=None):
         """Shift a player's integer property's value.
