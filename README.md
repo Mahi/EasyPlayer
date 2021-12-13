@@ -36,8 +36,10 @@ All of these effect calls return an `_EffectHandler` instance.
 To remove an infinite effect, or to prematurely cancel an effect with a duration,
 store the returned instance and call `.cancel()` on it:
 
-    freeze = player.freeze(duration=10)  # Keywording is optional!
-    freeze.cancel()  # Cancel manually before duration has ended
+```py
+freeze = player.freeze(duration=10)  # Keywording is optional!
+freeze.cancel()  # Cancel manually before duration has ended
+```
 
 Keep in mind that none of these function calls interfere with each other, so calling `.cancel()` might not unfreeze the player completely;
 it simply removes the freeze you've applied, but the player might still be frozen by someone else.
@@ -57,12 +59,14 @@ This allows you to more easily react to a player killing an opponent vs a player
 ### How to use the easy events?
 Simply create a Source.Python `PlayerDictionary` like you normally would, and forward it to the `EventManager` constructor:
 
-    player_dict = PlayerDictionary(MyPlayer)  # MyPlayer doesn't have to subclass EasyPlayer, but why wouldn't it? ;)
-    events = easyplayer.EventManager(player_dict)  # Will now use your player_dict to find players for events!
+```py
+player_dict = PlayerDictionary(MyPlayer)  # MyPlayer doesn't have to subclass EasyPlayer, but why wouldn't it? ;)
+events = easyplayer.EventManager(player_dict)  # Will now use your player_dict to find players for events!
 
-    @events.on('player_kill')  # Remember, new events!
-    def on_player_kill(player, victim, **eargs):  # You can pick any arguments from the event args (eargs)
-        print(player.my_custom_attribute)  # No userids, no index conversions...
+@events.on('player_kill')  # Remember, new events!
+def on_player_kill(player, victim, **eargs):  # You can pick any arguments from the event args (eargs)
+    print(player.my_custom_attribute)  # No userids, no index conversions...
+```
 
 That's easy.
 
