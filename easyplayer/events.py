@@ -1,23 +1,47 @@
+import collections
+
 from core import AutoUnload
 from events.manager import event_manager
 
 __all__ = (
     'Event',
     'EventManager',
-    'DEFAULT_PLAYER_GAME_EVENTS',
-    'DEFAULT_TWO_PLAYER_GAME_EVENT_MAP',
+    'GameEventConversion',
+    'DEFAULT_GAME_EVENT_CONVERSIONS',
 )
 
-DEFAULT_PLAYER_GAME_EVENTS = {
-    'player_jump',
-    'player_spawn',
+GameEventConversion = collections.namedtuple(
+    'GameEventConversion',
+    (
+        'userid_key',
+        'player_key',
+        'event_name',
+    )
+)
+
+DEFAULT_GAME_EVENT_CONVERSIONS = {
+    'player_blind': [
+        GameEventConversion('attacker', 'attacker', 'player_blind'),
+        GameEventConversion('userid', 'victim', 'player_go_blind'),
+    ],
+    'player_death': [
+        GameEventConversion('assister', 'assister', 'player_assist'),
+        GameEventConversion('attacker', 'attacker', 'player_kill'),
+        GameEventConversion('userid', 'victim', 'player_death'),
+    ],
+    'player_hurt': [
+        GameEventConversion('attacker', 'attacker', 'player_attack'),
+        GameEventConversion('userid', 'victim', 'player_victim'),
+    ],
 }
 
-DEFAULT_TWO_PLAYER_GAME_EVENT_MAP = {
-    'player_blind': ('player_blind', 'player_go_blind'),
-    'player_death': ('player_kill', 'player_death'),
-    'player_hurt': ('player_attack', 'player_victim'),
-}
+
+# Single player events with just 'userid' => 'player' conversion
+for event_name in (
+    'bomb_defused', 'bomb_exploded', 'bomb_planted',
+    'player_jump', 'player_spawn',
+):
+    DEFAULT_GAME_EVENT_CONVERSIONS[event_name] = [GameEventConversion('userid', 'player', event_name)]
 
 
 class Event:
@@ -74,37 +98,24 @@ class EventManager(AutoUnload):
     ... def on_player_jump(player, **eargs):
     ...     assert type(player) == MyCustomPlayer
 
-    You can also provide custom GameEvent names if the defaults
-    aren't suitable for your needs:
+    You can register additional game events converters with
+    `add_simple_conversion()`:
 
-    >>> event_names = {'enter_bombzone', 'exit_bombzone'}
-    >>> events = EventManager(player_dict, event_names)
+    >>> events = EventManager(player_dict)
+    >>> events.add_simple_conversions('enter_bombzone', 'exit_bombzone')
     >>> @events.on('enter_bombzone')
     ... def on_enter_bombzone(player, **eargs):
     ...     assert type(player) == MyCustomPlayer
 
     By default, all the GameEvents with an attacker and
-    a victim have been split up into two events:
+    a victim have been split up into multiple events:
 
     - player_blind => player_blind and player_go_blind
-    - player_death => player_kill and player_death
     - player_hurt => player_attack and player_victim
+    - player_death => player_kill, player_assist, and player_death
 
-    These can be disabled or modified through the optional
-    `two_player_game_event_map` keyword argument:
-
-    >>> my_two_player_game_event_map = {
-    ...     # game_event: (attacker_event, victim_event),
-    ...     'player_death': ('player_kill', 'player_killed'),
-    ...     # Not providing other events disables them!
-    ... }
-    >>> events = EventManager(
-    ...     player_dict,
-    ...     two_player_game_event_map=my_two_player_game_event_map
-    ... )
-
-    Finally, you can add custom events with `create_event()` and
-    fire them using the ´[]` syntax:
+    Finally, you can add completely custom events with
+    `create_event()` and fire them using the ´[]` syntax:
 
     >>> events = EventManager(player_dict)
     >>> events.create_event('my_custom_event')
@@ -118,35 +129,57 @@ class EventManager(AutoUnload):
 
     def __init__(self,
         player_dict,
-        player_game_events=DEFAULT_PLAYER_GAME_EVENTS,
-        two_player_game_event_map=DEFAULT_TWO_PLAYER_GAME_EVENT_MAP,
+        game_event_conversions=DEFAULT_GAME_EVENT_CONVERSIONS,
     ):
         """Initialize the event manager for a player dict."""
         self.player_dict = player_dict
         self._events = {}
-        self.player_game_events = player_game_events
-        self.two_player_game_event_map = two_player_game_event_map
+        self.game_event_conversions = collections.defaultdict(list)
+        for game_event_name, conversions in game_event_conversions.items():
+            for conversion in conversions:
+                self.add_game_event_conversion(game_event_name, conversion)
 
-        for game_event in self.player_game_events:
-            event_manager.register_for_event(game_event, self._on_player_game_event)
-            self.create_event(game_event)
+    def add_game_event_conversion(self, source_event_name, game_event_conversion):
+        """Add a game event conversion to the manager.
 
-        for game_event, easy_events in self.two_player_game_event_map.items():
-            event_manager.register_for_event(game_event, self._on_two_player_game_event)
-            attacker_event, victim_event = easy_events
-            self.create_event(attacker_event)
-            self.create_event(victim_event)
+        Example usage:
+
+        >>> events.add_game_event_conversion(
+        ...     # Add a conversion for 'bomb_beingdefuse' game event
+        ...     'bomb_begindefuse',
+        ...     # Convert the event's 'userid' key to a player object
+        ...     # and call the new event 'bomb_defused'
+        ...     GameEventConversion('userid', 'player', 'bomb_defused')
+        ... )
+        """
+        if self._on_game_event not in event_manager.get(source_event_name, ()):
+            event_manager.register_for_event(source_event_name, self._on_game_event)
+        self.game_event_conversions[source_event_name].append(game_event_conversion)
+        self.create_event(game_event_conversion.event_name)
+
+    def add_simple_game_event_conversion(self, event_name):
+        """Add a game event conversion for 'userid' key only.
+
+        Retains the event name.
+        """
+        self.add_game_event_conversion(
+            event_name,
+            GameEventConversion('userid', 'player', event_name),
+        )
 
     def _unload_instance(self):
         """Automatically unload the GameEvent listeners."""
-        for event_name in self.player_game_events:
-            event_manager.unregister_for_event(event_name, self._on_player_game_event)
-
-        for event_name in self.two_player_game_event_map.keys():
-            event_manager.unregister_for_event(event_name, self._on_two_player_game_event)
+        for event_name in self.game_event_conversions.keys():
+            event_manager.unregister_for_event(event_name, self._on_game_event)
 
     def __getitem__(self, key):
         return self._events[key]
+
+    def __contains__(self, key):
+        return key in self._events
+
+    def __iter__(self):
+        return iter(self._events.keys())
 
     def create_event(self, event_name):
         """Create a new event into the manager."""
@@ -167,27 +200,18 @@ class EventManager(AutoUnload):
             return listener
         return decorator
 
-    def _on_player_game_event(self, game_event):
+    def _on_game_event(self, game_event):
         """Invoke easyevent for a single player GameEvent."""
         event_args = game_event.variables.as_dict()
-        userid = event_args.pop('userid')
-        player = self.player_dict.from_userid(userid)
-        self[game_event.name].fire(event_args, player=player)
 
-    def _on_two_player_game_event(self, game_event):
-        """Invoke easyevents for a two player GameEvent."""
-        event_args = game_event.variables.as_dict()
-        try:
-            attacker_id = event_args.pop('attacker')
-            attacker = self.player_dict.from_userid(attacker_id)
-        except KeyError:
-            attacker = None
+        for game_event_conversion in self.game_event_conversions[game_event.name]:
+            try:
+                userid = event_args.pop(game_event_conversion.userid_key)
+                event_args[game_event_conversion.player_key] = self.player_dict.from_userid(userid)
+            except (KeyError, ValueError):
+                event_args[game_event_conversion.player_key] = None
 
-        userid = event_args.pop('userid')
-        victim = self.player_dict.from_userid(userid)
-
-        event_args.update(attacker=attacker, victim=victim)
-        attacker_event, victim_event = self.two_player_game_event_map[game_event.name]
-        self[victim_event].fire(event_args, player=victim)
-        if attacker is not None:
-            self[attacker_event].fire(event_args, player=attacker)
+        for game_event_conversion in self.game_event_conversions[game_event.name]:
+            player = event_args[game_event_conversion.player_key]
+            if player is not None:
+                self[game_event_conversion.event_name].fire(event_args, player=player)
