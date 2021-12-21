@@ -36,22 +36,6 @@ class Player(SourcePythonPlayer):
     """
 
     @property
-    def cs_team(self):
-        """Get the player's Counter-Strike team as a string.
-
-        This string is compatible with Source.Python's filters.
-        """
-        return ('un', 'spec', 't', 'ct')[self.team]
-
-    @property
-    def tf_team(self):
-        """Get the player's Team Fortress team as a string.
-
-        This string is compatible with Source.Python's filters.
-        """
-        return ('un', 'spec', 'red', 'blue')[self.team]
-
-    @property
     def chest_location(self):
         """Get the player's chest's location."""
         origin = self.origin
