@@ -10,14 +10,30 @@ __all__ = (
     'DEFAULT_GAME_EVENT_CONVERSIONS',
 )
 
+
 GameEventConversion = collections.namedtuple(
     'GameEventConversion',
     (
         'userid_key',
         'player_key',
         'event_name',
-    )
+        'fire_condition',
+    ),
 )
+# Set all to 'None' by default, ideally only 'fire_condition' should be optional
+GameEventConversion.__new__.__defaults__ = (None,) * len(GameEventConversion._fields)
+
+
+def _self_inflicted(game_event):
+    return (
+        (not game_event['attacker'])
+        or game_event['attacker'] == game_event['userid']
+    )
+
+
+def _not_self_inflicted(game_event):
+    return not _self_inflicted(game_event)
+
 
 DEFAULT_GAME_EVENT_CONVERSIONS = {
     'player_blind': [
@@ -26,12 +42,14 @@ DEFAULT_GAME_EVENT_CONVERSIONS = {
     ],
     'player_death': [
         GameEventConversion('assister', 'assister', 'player_assist'),
-        GameEventConversion('attacker', 'attacker', 'player_kill'),
-        GameEventConversion('userid', 'victim', 'player_death'),
+        GameEventConversion('attacker', 'attacker', 'player_kill', _not_self_inflicted),
+        GameEventConversion('userid', 'victim', 'player_death', _not_self_inflicted),
+        GameEventConversion('userid', 'victim', 'player_suicide', _self_inflicted),
     ],
     'player_hurt': [
-        GameEventConversion('attacker', 'attacker', 'player_attack'),
-        GameEventConversion('userid', 'victim', 'player_victim'),
+        GameEventConversion('attacker', 'attacker', 'player_attack', _not_self_inflicted),
+        GameEventConversion('userid', 'victim', 'player_victim', _not_self_inflicted),
+        GameEventConversion('userid', 'victim', 'player_self_hurt', _self_inflicted),
     ],
 }
 
@@ -201,17 +219,20 @@ class EventManager(AutoUnload):
         return decorator
 
     def _on_game_event(self, game_event):
-        """Invoke easyevent for a single player GameEvent."""
+        """Invoke easyevents for a single player GameEvent."""
         event_args = game_event.variables.as_dict()
 
-        for game_event_conversion in self.game_event_conversions[game_event.name]:
+        for conversion in self.game_event_conversions[game_event.name]:
             try:
-                userid = event_args.pop(game_event_conversion.userid_key)
-                event_args[game_event_conversion.player_key] = self.player_dict.from_userid(userid)
+                userid = event_args.pop(conversion.userid_key)
+                event_args[conversion.player_key] = self.player_dict.from_userid(userid)
             except (KeyError, ValueError):
-                event_args[game_event_conversion.player_key] = None
+                event_args[conversion.player_key] = None
 
-        for game_event_conversion in self.game_event_conversions[game_event.name]:
-            player = event_args[game_event_conversion.player_key]
+        for conversion in self.game_event_conversions[game_event.name]:
+            fire_event = conversion.fire_condition is None or conversion.fire_condition(game_event)
+            if not fire_event:
+                continue
+            player = event_args.get(conversion.player_key)
             if player is not None:
-                self[game_event_conversion.event_name].fire(event_args, player=player)
+                self[conversion.event_name].fire(event_args, player=player)
