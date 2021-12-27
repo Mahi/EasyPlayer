@@ -1,22 +1,51 @@
 import collections
+from typing import Callable, Dict, List, Optional, Type, TypeVar, Union
 
 from listeners.tick import Delay
 
+
 __all__ = (
     'Effect',
+    'EffectHandler',
 )
 
 
-class Effect:
-    """Effect that manages simultaneous access from multiple sources.
+Number = Union[int, float]
+TargetKey = TypeVar('TargetKey')
+TargetType = TypeVar('TargetType')
+TargetFunction = Callable[[TargetType], None]
 
-    An effect is like a `property` instance. Instead of get and set
-    functions, it has on and off functions. These can be passed in
-    to the __init__, or a decorator can be used similar to property:
+
+class Effect:
+    """Manage multiple simultaneous state changes by different sources.
+
+    An effect allows the same state to be changed simultaneously by
+    storing _effect handlers_, and ensuring the state isn't reverted
+    until all effect handlers have been cancelled:
+
+    >>> freeze1 = player.freeze(duration=4)
+    >>> freeze2 = player.freeze(duration=2)
+    >>> sleep(1)
+    >>> freeze2.cancel()  # Player still frozen by `freeze1`!
+
+    To use the Effect class, you must subclass it and override
+    the `identify_target()` method, with an unique method that can
+    identify your objects from each other:
+
+    >>> class PlayerEffect(Effect):
+    ...     def identify_target(self, target):
+    ...         return target.userid
+
+    This result must be hashable, as it's used as a key in a dict.
+
+    From there on, an effect is used like a `property` instance,
+    but instead of `fget` and `fset`, it has `on_f` and `off_f`.
+    Just like with `property`, these can be passed to the `__init__`,
+    or provided later via a decorator:
 
     >>> class Player:
     ...
-    ...     @Effect
+    ...     @PlayerEffect
     ...     def freeze(self):
     ...         self._frozen = True
     ...
@@ -25,116 +54,123 @@ class Effect:
     ...         self._frozen = False
     ...
 
-    The effect manages access from multiple sources by using a counter.
-    When the effect is applied on a player, the effect's count for
-    the player gets incremented by one. If the count was at zero,
-    the on function will be called. When an effect is cancelled from
-    a player, his counter will decrement by one. This doesn't guarantee
-    that the actual effect gets disabled, as someone else might still
-    have an effect of the same type going on. Once the counter
-    hits zero, the off function will be called. Both function calls
-    get the player as the sole argument.
+    Applying an effect on a player will stores an effect handlers,
+    which is returned by the `player.freeze()` method call.
+    This handler is used internally to identify when the state should
+    change, and can be used to prematurely cancel the effect.
     """
 
-    def __init__(self, on_f=None, off_f=None):
+    def __init__(self, on_f: Optional[TargetFunction]=None, off_f: Optional[TargetFunction]=None):
         """Initialize an effect with on and off functions."""
         self.on_f = on_f
         self.off_f = off_f
-        self._counter = collections.defaultdict(int)  # {userid: count}
+        self._effect_handlers: Dict[TargetKey, List[EffectHandler]] = collections.defaultdict(list)
 
-    def on(self, on_f):
+    def identify_target(self, target: TargetType):
+        raise NotImplementedError(f'{type(self).__name__}.identify_target()')
+
+    def on(self, on_f: TargetFunction) -> 'Effect':
         """Decorator for updating the effect's on function."""
         return type(self)(on_f, self.off_f)
 
-    def off(self, off_f):
+    def off(self, off_f: TargetFunction) -> 'Effect':
         """Decorator for updating the effect's off function."""
         return type(self)(self.on_f, off_f)
 
-    def enable_for(self, player):
-        """Increment the effect's count for a player by one.
+    def _apply(self, handler: 'EffectHandler'):
+        """Apply an new effect from a handler.
 
-        Calls the on function if the count was at zero.
+        Calls the on-function if it was the first effect of its kind.
         """
-        self._counter[player.userid] += 1
-        if self._counter[player.userid] == 1:
-            self.on_f(player)
+        key = self.identify_target(handler.target)
+        if len(self._effect_handlers[key]) == 0:
+            self.on_f(handler.target)
+        self._effect_handlers[key].append(handler)
 
-    def disable_for(self, player):
-        """Decrement the effect's count for a player by one.
+    def _cancel(self, handler: 'EffectHandler'):
+        """Cancel an effect from a handler.
 
-        Calls the off function if the count hits zero.
+        Calls the off-function if it was the last effect of its kind.
         """
-        self._counter[player.userid] -= 1
-        if self._counter[player.userid] == 0:
-            self.off_f(player)
+        key = self.identify_target(handler.target)
+        self._effect_handlers[key].remove(handler)
+        if len(self._effect_handlers[key]) == 0:
+            self.off_f(handler.target)
 
-    def is_enabled_for(self, player):
-        """Check if the effect is enabled for a player."""
-        return self._counter[player.userid] > 0
+    def is_active_for(self, target: TargetType) -> bool:
+        """Check if the effect is active for a target."""
+        key = self.identify_target(target)
+        return len(self._effect_handlers[key]) > 0
 
-    def get_handler_for(self, player):
-        """Get an `_EffectHandler` instance for a player."""
-        return _EffectHandler(self, player)
-
-    def __get__(self, player, player_cls=None):
-        """Get a handler when called throgh a player instance."""
-        if player is None:
+    def __get__(self, target: TargetType, type_: Optional[Type[TargetType]]=None):
+        """Get an effect handler when called via a descriptor."""
+        if target is None:
             return self
-        return _EffectHandler(self, player)
+        return EffectHandler(self, target)
 
 
-class _EffectHandler:
-    """Natural way for using effects directly through a player instance.
+class EffectHandler:
+    """Handler allows using effects directly through a target instance.
 
-    Instead of:
+    Accessing an effect through a target instance with `target.effect`
+    will return an effect handler, that can be called like a function
+    to actually apply the effect:
 
-        PlayerClass.my_effect.enable_for(player_instance)
+    >>> handler = player.freeze
+    >>> handler()  # Apply the `freeze` effect on `player` object
+    >>> handler.cancel()  # Cancel the effect
 
-    You simply write:
+    The `handler()` call returns the handler itself,
+    to allow a simpler and more natural syntax of:
 
-        player_instance.my_effect()
-
-    This will return a handler instance with a cancel method to cancel
-    the effect:
-
-        effect = player_instance.my_effect()
-        effect.cancel()
+    >>> handler = player.freeze()
+    >>> handler.cancel()
 
     Handler also allows a duration to be applied on an effect via
     an additional duration parameter. Effects with a duration can
     also be cancelled manually via the cancel method:
 
-        freeze = player.freeze(duration=5)  # Keywording is optional
-        freeze.cancel()  # Cancel manually before 5 seconds has passed
+    >>> freeze = player.freeze(duration=5)  # Keywording is optional
+    >>> sleep(1)
+    >>> freeze.cancel()
     """
 
-    def __init__(self, effect, player):
-        """Initialize a handler which links an effect and a player."""
+    def __init__(self, effect: Effect, target: TargetType):
+        """Initialize a handler which links an effect to a target."""
         self.effect = effect
-        self.player = player
-        self._delay = None
+        self.target = target
+        self._delay: Optional[Delay] = None
 
-    def __call__(self, duration=None):
-        """Enable the effect for the player.
+    def __call__(self, duration: Optional[Number]=None) -> 'EffectHandler':
+        """Activate the handler's effect for its target.
 
-        If a duration is passed, the effect will get automatically
-        cancelled after the duration has ended.
+        If a duration is provided, the effect will automatically
+        be cancelled after the duration has passed.
         """
-        self.effect.enable_for(self.player)
+        self.effect._apply(self)
         if duration is not None:
-            self._delay = Delay(duration, self.effect.disable_for, (self.player,))
+            self._delay = Delay(duration, self.effect._cancel, (self,))
         return self
 
     def cancel(self):
-        """Cancel the enabled effect.
+        """Cancel the applied effect.
 
-        Also cancels the delay if a duration was passed when enabled.
+        Also cancels the delay if a duration was initially provided.
         """
         if self._delay is not None:
             self._delay.cancel()
             self._delay = None
-        self.effect.disable_for(self.player)
+        self.effect._cancel(self)
 
-    def is_enabled(self):
-        """Check if the effect is enabled for the player."""
-        return self.effect.is_enabled_for(self.player)
+    def is_active(self) -> bool:
+        """Check if the effect is currently active on a target.
+
+        This allows the easier syntax of:
+
+        >>> player.freeze.is_active()
+
+        Compared to accessing the Effect instance directly:
+
+        >>> Player.freeze.is_active_for(player)
+        """
+        return self.effect.is_active_for(self.target)

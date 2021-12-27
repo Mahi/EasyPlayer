@@ -1,19 +1,31 @@
-﻿from colors import Color
+﻿from typing import Iterator, Optional, Tuple
+
+from colors import Color
 from entities.constants import MoveType
-from events import Event
+from events import Event, GameEvent
 from filters.weapons import WeaponClassIter
 from listeners.tick import Delay
-from players.entity import Player as SourcePythonPlayer
+from mathlib import Vector
+from players.entity import Player as PlayerEntity
 
-from .effect import Effect
+from .effect import Effect, EffectHandler, Number
+
 
 __all__ = (
     'Player',
+    'PlayerEffect',
 )
 
 
+class PlayerEffect(Effect):
+    """Effect that uses player's `userid` for identification."""
+
+    def identify_target(self, target: PlayerEntity):
+        return target.userid
+
+
 @Event('player_death')
-def _on_player_death(event):
+def _on_player_death(event: GameEvent):
     """Callback for resetting player's attributes on death.
 
     For some reason Valve/SP Team chose not to reset things like
@@ -28,52 +40,55 @@ def _on_player_death(event):
             player.unrestrict_weapons(weapon.name)
 
 
-class Player(SourcePythonPlayer):
+class Player(PlayerEntity):
     """A player entity class with additional functionality.
 
     Takes full advantage of the `Effect` class, and implements
     some other missing functionality from Source.Python's player class.
     """
 
+    caching = True  # Enable caching between plugins
+
     @property
-    def chest_location(self):
+    def chest_location(self) -> Vector:
         """Get the player's chest's location."""
         origin = self.origin
         origin.z += 50
         return origin
 
     @property
-    def stomach_location(self):
+    def stomach_location(self) -> Vector:
         """Get the player's stomach's location."""
         origin = self.origin
         origin.z += 40
         return origin
 
     @property
-    def hip_location(self):
+    def hip_location(self) -> Vector:
         """Get the player's hips's location."""
         origin = self.origin
         origin.z += 32
         return origin
 
-    def shift_property(self, prop_name, shift, duration=None):
-        """Shift a player's integer property's value.
+    def shift_property(self, prop_name: str, shift: Number, duration: Optional[Number]=None) -> Optional[Delay]:
+        """Shift a player's numeric property's value.
 
-        Removes the inconvenience of using `setattr` and possibly other
-        helper functions when trying to change a property's value
-        via an other function (delays for example).
-        If an optional duration argument is passed, the shift will be
-        reverted after the duration has passed.
+        Removes the inconvenience of using `setattr` and possibly
+        other helper functions when trying to change
+        a property's value via delays.
+
+        If an optional duration argument is passed,
+        the shift will be reverted after the duration.
         """
         value = getattr(self, prop_name)
         setattr(self, prop_name, value + shift)
         if duration is not None:
             return Delay(duration, self.shift_property, (prop_name, -shift))
 
-    def _move_types_by_priority(self):
+    def _move_types_by_priority(self) -> Iterator[Tuple[EffectHandler, MoveType]]:
         """Get player's effects and move types ordered by priority.
 
-        Returns a generator which yields `(_EffectHandler, MoveType)`
+        Returns a generator which yields `(EffectHandler, MoveType)`
         pairs in the order of noclip, freeze, fly.
         """
         yield self.noclip, MoveType.NOCLIP
@@ -89,18 +104,18 @@ class Player(SourcePythonPlayer):
         effect for the player, or ``MoveType.WALK``
         if none are enabled.
         """
-        for effect, move_type in self._move_types_by_priority():
-            if effect.is_enabled():
+        for effect_handler, move_type in self._move_types_by_priority():
+            if effect_handler.is_active():
                 self.move_type = move_type
                 break
         else:
             self.move_type = MoveType.WALK
 
-    noclip = Effect(_update_move_type, _update_move_type)
-    freeze = Effect(_update_move_type, _update_move_type)
-    fly = Effect(_update_move_type, _update_move_type)
+    noclip = PlayerEffect(_update_move_type, _update_move_type)
+    freeze = PlayerEffect(_update_move_type, _update_move_type)
+    fly = PlayerEffect(_update_move_type, _update_move_type)
 
-    @Effect
+    @PlayerEffect
     def burn(self):
         self.ignite_lifetime(7200)
 
@@ -108,7 +123,7 @@ class Player(SourcePythonPlayer):
     def burn(self):
         self.ignite_lifetime(0)
 
-    @Effect
+    @PlayerEffect
     def godmode(self):
         self.set_godmode(True)
 
@@ -116,7 +131,7 @@ class Player(SourcePythonPlayer):
     def godmode(self):
         self.set_godmode(False)
 
-    @Effect
+    @PlayerEffect
     def noblock(self):
         self.set_noblock(True)
 
@@ -124,7 +139,7 @@ class Player(SourcePythonPlayer):
     def noblock(self):
         self.set_noblock(False)
 
-    @Effect
+    @PlayerEffect
     def paralyze(self):
         self.set_frozen(True)
 

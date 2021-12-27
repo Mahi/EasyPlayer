@@ -1,9 +1,6 @@
-from .effect import Effect
-from .events import EventManager
-from .player import Player
+from .player import Player as EasyPlayer
+
 
 __all__ = (
-    'Effect',
-    'EventManager',
-    'Player',
+    'EasyPlayer',
 )
